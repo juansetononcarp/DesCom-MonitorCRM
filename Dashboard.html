@@ -780,15 +780,16 @@
         <table>
           <thead>
             <tr>
-              <th onclick="ordenarLeads('id')" style="cursor: pointer;">ID ⬍</th>
-              <th onclick="ordenarLeads('nombre')" style="cursor: pointer;">Nombre ⬍</th>
-              <th onclick="ordenarLeads('fecha')" style="cursor: pointer;">Fecha ⬍</th>
-              <th onclick="ordenarLeads('estado')" style="cursor: pointer;">Estado ⬍</th>
+                <th onclick="ordenarLeads('id')" style="cursor: pointer;">ID ⬍</th>
+                <th onclick="ordenarLeads('nombre')" style="cursor: pointer;">Nombre ⬍</th>
+                <th onclick="ordenarLeads('fecha')" style="cursor: pointer;">Fecha ⬍</th>
+                <th onclick="ordenarLeads('estado')" style="cursor: pointer;">Estado ⬍</th>
+                <th onclick="ordenarLeads('diasDesdeUltimaGestion')" style="cursor: pointer;">Días desde actividad ⬍</th>
             </tr>
           </thead>
           <tbody id="leadsTableBody">
             <tr>
-              <td colspan="4" class="loading">Selecciona un asesor para ver sus leads</td>
+                <td colspan="5" class="loading">Selecciona un asesor para ver sus leads</td>
             </tr>
           </tbody>
         </table>
@@ -1199,13 +1200,13 @@
       tbody.innerHTML = '';
       
       if (!currentUser) {
-        tbody.innerHTML = '<tr><td colspan="4" class="loading">Selecciona un asesor para ver sus leads</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="loading">Selecciona un asesor para ver sus leads</td></tr>';
         ocultarPaginacion();
         return;
       }
       
       if (leadsFiltrados.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="loading">No se encontraron leads</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="loading">No se encontraron leads</td></tr>';
         ocultarPaginacion();
         return;
       }
@@ -1239,6 +1240,7 @@
           <td>${lead.nombre || 'Sin nombre'}</td>
           <td>${lead.fecha || 'Sin fecha'}</td>
           <td><span class="estado-badge ${estadoClass}">${estadoTexto}</span></td>
+          <td>${(lead.diasDesdeUltimaGestion === null || lead.diasDesdeUltimaGestion === undefined) ? '—' : lead.diasDesdeUltimaGestion + ' días'}</td>
         `;
         tbody.appendChild(row);
       });

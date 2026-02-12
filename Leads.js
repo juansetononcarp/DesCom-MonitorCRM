@@ -120,17 +120,39 @@ var Leads = (function() {
    */
   function formatearLead(lead) {
     const nombreCompleto = `${lead.nombre || ''} ${lead.apellido || ''}`.trim() || 'Sin nombre';
-    
+    // Calcular última actividad específica por lead
+    var ultimaActividad = null;
+    try {
+      if (lead && lead.ultimaGestion) {
+        ultimaActividad = parsePossiblySheetDate(lead.ultimaGestion);
+      }
+      if (!ultimaActividad) {
+        var fromScan = getUltimaActividadPorLead(lead.leadId);
+        if (fromScan) ultimaActividad = fromScan;
+      }
+    } catch (e) {
+      ultimaActividad = null;
+    }
+
+    var diasDesde = null;
+    if (ultimaActividad instanceof Date && !isNaN(ultimaActividad.getTime())) {
+      var hoy = new Date();
+      // normalizar horas para contar días completos
+      var diffMs = hoy.getTime() - ultimaActividad.getTime();
+      diasDesde = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    }
+
     return {
       id: lead.leadId !== undefined && lead.leadId !== null ? lead.leadId.toString() : 'N/A',
       nombre: nombreCompleto,
       fecha: Fechas.formatear(lead.fecha),
       estado: lead.estado || 'Sin estado',
       estadoClasificado: clasificarEstado(lead.estado),
-      
+
       // Datos adicionales
       creadoPor: lead.creadoPor || null,
-      ultimaGestion: lead.ultimaGestion || null
+      ultimaGestion: ultimaActividad || null,
+      diasDesdeUltimaGestion: diasDesde
     };
   }
   
@@ -219,3 +241,98 @@ var Leads = (function() {
   };
   
 })();
+
+// ================================
+// Utilidades para última actividad por Lead
+// ================================
+
+/**
+ * Intenta convertir distintos formatos de fecha (Date, número de Sheets, string) a Date.
+ */
+function parsePossiblySheetDate(value) {
+  try {
+    if (!value && value !== 0) return null;
+    if (value instanceof Date) return value;
+    if (typeof value === 'number') {
+      if (value > 25000) return new Date((value - 25569) * 86400 * 1000);
+      return null;
+    }
+    var parsed = new Date(value);
+    if (!isNaN(parsed.getTime())) return parsed;
+    return null;
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * Escanea una hoja buscando filas que mencionen `leadId` y devuelve la última fecha encontrada (Date) o null.
+ * Usa heurísticas parecidas a las de `Usuarios.scanSheetForUserDates`.
+ */
+function scanSheetForLeadDates(sheet, leadId) {
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  if (lastRow < 2 || lastCol < 1) return null;
+
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0] || [];
+  var dateCol = -1;
+  var dateRegex = /(fecha|date|created|timestamp|hora|time|datetime|creado)/i;
+  for (var c = 0; c < headers.length; c++) {
+    var h = headers[c] ? headers[c].toString() : '';
+    if (dateCol === -1 && dateRegex.test(h)) dateCol = c;
+  }
+
+  var data = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+  var maxDate = null;
+
+  for (var r = 0; r < data.length; r++) {
+    var row = data[r];
+    var found = false;
+    for (var cc = 0; cc < row.length; cc++) {
+      if (row[cc] && row[cc].toString().toLowerCase().indexOf((leadId || '').toString().toLowerCase()) !== -1) {
+        found = true; break;
+      }
+    }
+    if (found) {
+      if (dateCol >= 0) {
+        var d = parsePossiblySheetDate(row[dateCol]);
+        if (d && (!maxDate || d.getTime() > maxDate.getTime())) maxDate = d;
+      } else {
+        // intentar detectar alguna celda con fecha en la fila
+        for (var dd = 0; dd < row.length; dd++) {
+          var cand = parsePossiblySheetDate(row[dd]);
+          if (cand && (!maxDate || cand.getTime() > maxDate.getTime())) maxDate = cand;
+        }
+      }
+    }
+  }
+
+  return maxDate;
+}
+
+/**
+ * Obtiene la última actividad para un lead consultando `Leads.ultimaGestion` y escaneando hojas: Comentarios, Agenda, Tareas, Viajes.
+ */
+function getUltimaActividadPorLead(leadId) {
+  try {
+    if (!leadId && leadId !== 0) return null;
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var candidateSheets = ['Comentarios', 'Agenda', 'Tareas', 'Viajes'];
+    var maxDate = null;
+
+    candidateSheets.forEach(function(sheetName) {
+      var sheet = ss.getSheetByName(sheetName);
+      if (!sheet) return;
+      try {
+        var found = scanSheetForLeadDates(sheet, leadId);
+        if (found && (!maxDate || found.getTime() > maxDate.getTime())) maxDate = found;
+      } catch (e) {
+        console.warn('Error escaneando ' + sheetName + ': ' + (e && e.toString()));
+      }
+    });
+
+    return maxDate;
+  } catch (e) {
+    return null;
+  }
+}
