@@ -143,6 +143,32 @@ function getUltimaActividadAsociado(usuarioId) {
       }
     });
 
+    // 3) Además, escanear por LeadID en hojas de actividad (por si la acción la hizo otro actor)
+    try {
+      var leadIds = [];
+      try {
+        var usuarioLeads = Leads.getLeadsPorUsuario(usuarioId) || [];
+        leadIds = usuarioLeads.map(function(l) { return (l.leadId !== undefined && l.leadId !== null) ? l.leadId.toString().toLowerCase() : ''; }).filter(Boolean);
+      } catch (e) {
+        console.warn('No se pudieron obtener leadIds del usuario:', e && e.toString());
+      }
+
+      if (leadIds.length > 0) {
+        candidateSheets.forEach(function(sheetName) {
+          var sheet = ss.getSheetByName(sheetName);
+          if (!sheet) return;
+          try {
+            var lastByLead = scanSheetForUserOrLeadDates(sheet, usuarioIdStr, leadIds);
+            if (lastByLead && (!maxDate || lastByLead.getTime() > maxDate.getTime())) maxDate = lastByLead;
+          } catch (e) {
+            console.warn('Error escaneando por lead en hoja ' + sheetName + ': ' + (e && e.toString()));
+          }
+        });
+      }
+    } catch (e) {
+      // ignore
+    }
+
     // Formatear resultado usando Fechas.formatear si existe
     if (maxDate) return Fechas && Fechas.formatear ? Fechas.formatear(maxDate) : maxDate.toString();
     return null;
@@ -242,6 +268,84 @@ function scanSheetForUserDates(sheet, usuarioIdStr) {
       for (var dd = 0; dd < row.length; dd++) {
         var candidate = parsePossiblySheetDate(row[dd]);
         if (candidate && (!maxDate || candidate.getTime() > maxDate.getTime())) maxDate = candidate;
+      }
+    }
+  }
+
+  return maxDate;
+}
+
+/**
+ * Escanea una hoja buscando filas donde el actor sea `usuarioIdStr` o donde aparezca algún `leadId` del conjunto.
+ * Devuelve la última fecha encontrada (Date) o null.
+ */
+function scanSheetForUserOrLeadDates(sheet, usuarioIdStr, leadIds) {
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  if (lastRow < 2 || lastCol < 1) return null;
+
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0] || [];
+
+  var userCol = -1;
+  var dateCol = -1;
+  var userRegex = /(asesor|ac asignado|ac|asociad|usuario|mail|email|responsable|creado por)/i;
+  var dateRegex = /(fecha|date|created|timestamp|hora|time|datetime|creado)/i;
+
+  for (var c = 0; c < headers.length; c++) {
+    var h = headers[c] ? headers[c].toString() : '';
+    if (userCol === -1 && userRegex.test(h)) userCol = c;
+    if (dateCol === -1 && dateRegex.test(h)) dateCol = c;
+  }
+
+  // Priorizar columnas conocidas según hoja
+  try {
+    var sheetName = sheet.getName();
+    var sheetActorCols = {
+      'Tareas': 8,
+      'Agenda': 8,
+      'Comentarios': 6
+    };
+    if (sheetActorCols[sheetName] !== undefined) userCol = sheetActorCols[sheetName];
+  } catch (e) {}
+
+  var data = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+  var maxDate = null;
+
+  var leadSet = new Set((leadIds || []).map(function(x){return x.toString().toLowerCase();}));
+
+  for (var r = 0; r < data.length; r++) {
+    var row = data[r];
+
+    var matched = false;
+
+    // 1) actor coincide
+    if (userCol >= 0) {
+      var cellUser = row[userCol] ? row[userCol].toString().trim().toLowerCase() : '';
+      if (cellUser && (cellUser === usuarioIdStr || cellUser.indexOf(usuarioIdStr) !== -1)) matched = true;
+    }
+
+    // 2) si no matched, buscar LeadID en cualquier celda
+    if (!matched && leadSet.size > 0) {
+      for (var cc = 0; cc < row.length; cc++) {
+        if (!row[cc]) continue;
+        var text = row[cc].toString().toLowerCase();
+        // buscar si algun leadId está contenido
+        for (var lid of leadSet) {
+          if (text.indexOf(lid) !== -1) { matched = true; break; }
+        }
+        if (matched) break;
+      }
+    }
+
+    if (matched) {
+      if (dateCol >= 0) {
+        var d = parsePossiblySheetDate(row[dateCol]);
+        if (d && (!maxDate || d.getTime() > maxDate.getTime())) maxDate = d;
+      } else {
+        for (var dd = 0; dd < row.length; dd++) {
+          var cand = parsePossiblySheetDate(row[dd]);
+          if (cand && (!maxDate || cand.getTime() > maxDate.getTime())) maxDate = cand;
+        }
       }
     }
   }
