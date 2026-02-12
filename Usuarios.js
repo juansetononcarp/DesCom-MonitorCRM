@@ -352,3 +352,82 @@ function scanSheetForUserOrLeadDates(sheet, usuarioIdStr, leadIds) {
 
   return maxDate;
 }
+
+/**
+ * Diagnóstico rápido: devuelve estadísticas resumidas sin escanear hojas completas.
+ * Escanea como máximo `maxRows` por hoja y limita columnas para ser rápido.
+ */
+function getDiagnosticoRapido(usuarioId, maxRows) {
+  try {
+    maxRows = typeof maxRows === 'number' ? maxRows : 1000;
+    var start = new Date().getTime();
+    var result = {
+      usuario: usuarioId,
+      tiempoInicio: new Date().toISOString(),
+      leadsCount: 0,
+      sampleLeadIds: [],
+      sheets: [],
+      tiempoMs: 0
+    };
+
+    // Obtener leads del usuario (rápido)
+    var usuarioLeads = [];
+    try { usuarioLeads = Leads.getLeadsPorUsuario(usuarioId) || []; } catch (e) { usuarioLeads = []; }
+    result.leadsCount = usuarioLeads.length;
+    result.sampleLeadIds = usuarioLeads.slice(0, 10).map(function(l){ return l.leadId !== undefined && l.leadId !== null ? l.leadId.toString() : ''; });
+
+    var leadIds = result.sampleLeadIds.map(function(x){ return x.toString().toLowerCase(); });
+
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var candidateSheets = ['Comentarios','Agenda','Tareas','Viajes'];
+
+    candidateSheets.forEach(function(sheetName) {
+      var sheet = ss.getSheetByName(sheetName);
+      if (!sheet) {
+        result.sheets.push({ name: sheetName, exists: false });
+        return;
+      }
+
+      var lastRow = sheet.getLastRow();
+      var lastCol = Math.min(sheet.getLastColumn(), 20); // limitar columnas para velocidad
+      var rowsToScan = Math.min(Math.max(0, lastRow - 1), maxRows);
+      var stats = { name: sheetName, exists: true, lastRow: lastRow, scannedRows: rowsToScan, actorMatches: 0, leadMatches: 0 };
+
+      if (rowsToScan > 0) {
+        var data = sheet.getRange(2, 1, rowsToScan, lastCol).getValues();
+
+        // columnas actor heurísticas
+        var actorCols = { 'Tareas': 8, 'Agenda': 8, 'Comentarios': 6 };
+        var actorCol = actorCols[sheetName] !== undefined ? actorCols[sheetName] : -1;
+
+        var leadSet = new Set(leadIds);
+
+        for (var r = 0; r < data.length; r++) {
+          var row = data[r];
+          // actor match
+          if (actorCol >= 0 && actorCol < row.length) {
+            var cellUser = row[actorCol] ? row[actorCol].toString().trim().toLowerCase() : '';
+            if (cellUser && cellUser.indexOf((usuarioId || '').toString().toLowerCase()) !== -1) stats.actorMatches++;
+          }
+          // lead match (buscar en primeras columnas por muestra)
+          if (leadSet.size > 0) {
+            for (var c = 0; c < Math.min(row.length, 8); c++) {
+              if (!row[c]) continue;
+              var text = row[c].toString().toLowerCase();
+              for (var lid of leadSet) {
+                if (lid && text.indexOf(lid) !== -1) { stats.leadMatches++; break; }
+              }
+            }
+          }
+        }
+      }
+
+      result.sheets.push(stats);
+    });
+
+    result.tiempoMs = new Date().getTime() - start;
+    return result;
+  } catch (e) {
+    return { error: e && e.toString() };
+  }
+}

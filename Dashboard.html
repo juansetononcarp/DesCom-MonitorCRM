@@ -1434,39 +1434,17 @@
         return;
       }
 
-      // 1) Última actividad
+      // Ejecutar diagnóstico rápido (rápido, escanea pocas filas)
       google.script.run
-        .withSuccessHandler(function(ult) {
-          const ultima = ult || 'sin datos';
-
-          // 2) Estadísticas del usuario
-          google.script.run
-            .withSuccessHandler(function(stats) {
-              const statsSummary = stats || {};
-
-              // 3) Leads formateados (muestra)
-              google.script.run
-                .withSuccessHandler(function(leads) {
-                  const sample = Array.isArray(leads) ? leads.slice(0,10) : [];
-                  out.innerHTML = '';
-                  const pre = document.createElement('pre');
-                  pre.style.whiteSpace = 'pre-wrap';
-                  pre.textContent = 'Diagnóstico para: ' + currentUser + '\n\n' +
-                    'Última actividad: ' + ultima + '\n\n' +
-                    'Estadísticas (resumen): ' + JSON.stringify(statsSummary, null, 2) + '\n\n' +
-                    'Leads (muestra ' + sample.length + '):\n' + JSON.stringify(sample, null, 2);
-                  out.appendChild(pre);
-                })
-                .withFailureHandler(function(err){ out.textContent = 'Error obteniendo leads: ' + err; })
-                .getLeadsFormateadosPorUsuario(currentUser);
-
-            })
-            .withFailureHandler(function(err){ out.textContent = 'Error obteniendo estadísticas: ' + err; })
-            .getEstadisticasUsuarioConFiltros(currentUser, {});
-
+        .withSuccessHandler(function(summary) {
+          out.innerHTML = '';
+          const pre = document.createElement('pre');
+          pre.style.whiteSpace = 'pre-wrap';
+          pre.textContent = 'Diagnóstico rápido para: ' + currentUser + '\n\n' + JSON.stringify(summary, null, 2);
+          out.appendChild(pre);
         })
-        .withFailureHandler(function(err){ out.textContent = 'Error obteniendo última actividad: ' + err; })
-        .getUltimaActividadAsociado(currentUser);
+        .withFailureHandler(function(err){ out.textContent = 'Error diagnóstico rápido: ' + err; })
+        .getDiagnosticoRapido(currentUser, 1000);
     }
     
     // ========== FUNCIONES AUXILIARES ==========
