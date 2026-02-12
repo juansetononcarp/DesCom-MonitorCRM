@@ -157,7 +157,19 @@ function getEstadisticasUsuarioConFiltros(usuarioId, filtros = {}) {
     
   } catch (error) {
     console.error('❌ Error en getEstadisticasUsuarioConFiltros:', error);
-    throw error;
+    return {
+      usuarioId: usuarioId,
+      usuarioNombre: 'Error',
+      total: 0,
+      estados: {},
+      porcentajes: {},
+      todosLosLeads: [],
+      ultimosLeads: [],
+      metricasCuentas: {},
+      otrosEstados: {},
+      fechaActualizacion: new Date().toLocaleString('es-ES'),
+      resumen: 'Error al obtener estadísticas'
+    };
   }
 }
 
@@ -189,7 +201,12 @@ function getEstadisticasGeneralesConFiltros(filtros = {}) {
     
   } catch (error) {
     console.error('❌ Error en getEstadisticasGeneralesConFiltros:', error);
-    throw error;
+    return {
+      total: 0,
+      estados: {},
+      usuariosActivos: 0,
+      fechaActualizacion: new Date().toLocaleString('es-ES')
+    };
   }
 }
 
@@ -257,7 +274,14 @@ function getDashboardData(filtros = {}) {
     return {
       success: false,
       error: error.toString(),
-      timestamp: new Date().toLocaleString('es-ES')
+      timestamp: new Date().toLocaleString('es-ES'),
+      usuarios: [],
+      totalUsuarios: 0,
+      metricasGenerales: {},
+      metricasUsuario: {},
+      aniosDisponibles: [],
+      estadosDisponibles: [],
+      leadsUsuario: []
     };
   }
 }

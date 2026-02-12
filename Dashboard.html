@@ -1213,7 +1213,12 @@
       }
       
       if (leadsFiltrados.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="loading">No se encontraron leads</td></tr>';
+        // Si hay leads en la base pero leadsFiltrados está vacío, mostrar advertencia especial
+        if (todosLosLeads && Array.isArray(todosLosLeads) && todosLosLeads.length > 0) {
+          tbody.innerHTML = '<tr><td colspan="5" class="alert-error">No se pudieron mostrar los leads filtrados. Puede haber un problema con el índice de actividad o los filtros. Intenta recargar o reconstruir el índice.</td></tr>';
+        } else {
+          tbody.innerHTML = '<tr><td colspan="5" class="loading">No se encontraron leads</td></tr>';
+        }
         ocultarPaginacion();
         return;
       }
