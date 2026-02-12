@@ -113,58 +113,62 @@ var Usuarios = (function () {
  * Luego revisa `Leads` (columna `COL_ULTIMA_GESTION`) como fallback rápido.
  * Devuelve una fecha formateada (string) o null.
  */
+/**
+ * Busca la última fecha de actividad asociada a un `usuarioId` en columnas específicas.
+ * Lógica solicitada:
+ * - Leads: Usuario en Col AE (31), Fecha en Col B (2)
+ * - Tareas: Usuario en Col I (9), Fecha en Col F (6)
+ * - Agenda: Usuario en Col I (9), Fecha en Col J (10)
+ */
 function getUltimaActividadAsociado(usuarioId) {
   try {
     if (!usuarioId) return null;
     var usuarioIdStr = usuarioId.toString().trim().toLowerCase();
     var maxDate = null;
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
 
-    // 1) Consultar índice pre-calculado (RÁPIDO)
-    var indexMap = {};
-    try {
-      // Intentar leer de caché o sheet
-      indexMap = getUltimaActividadMap() || {};
-    } catch (e) {
-      console.warn('No se pudo leer índice de actividad:', e);
-    }
+    // Helper para escanear columnas específicas
+    function checkSheetCols(sheetName, userColIdx, dateColIdx) {
+      var sheet = ss.getSheetByName(sheetName);
+      if (!sheet) return;
 
-    // Buscar en el mapa si hay alguna entrada para este usuario (aunque el mapa es por LeadID, 
-    // tendríamos que recorrerlo o tener un mapa por Usuario. 
-    // Como el mapa actual es por LeadID, la estrategia más rápida es iterar
-    // las leads del usuario y buscar su última actividad en el mapa).
+      var lastRow = sheet.getLastRow();
+      if (lastRow < 2) return;
 
-    var leadsUsuario = [];
-    try {
-      leadsUsuario = Leads.getLeadsPorUsuario(usuarioId) || [];
-    } catch (e) {
-      console.warn('Error obteniendo leads para actividad:', e);
-    }
+      // Leer solo las dos columnas necesarias (Rápido)
+      try {
+        // getRange(row, col, numRows, numCols)
+        // userColIdx y dateColIdx son 1-based (como pide Apps Script)
+        var userVals = sheet.getRange(2, userColIdx, lastRow - 1, 1).getValues();
+        var dateVals = sheet.getRange(2, dateColIdx, lastRow - 1, 1).getValues();
 
-    leadsUsuario.forEach(function (lead) {
-      // a) Revisar columna 'Ultima Gestion' del propio lead (dato desnormalizado)
-      if (lead.ultimaGestion) {
-        var d = parsePossiblySheetDate(lead.ultimaGestion);
-        if (d && (!maxDate || d.getTime() > maxDate.getTime())) maxDate = d;
-      }
-
-      // b) Revisar índice por LeadId
-      if (lead.leadId && indexMap[lead.leadId]) {
-        var info = indexMap[lead.leadId];
-        if (info.ultimaISO) {
-          var d = new Date(info.ultimaISO);
-          if (!isNaN(d.getTime()) && (!maxDate || d.getTime() > maxDate.getTime())) maxDate = d;
+        for (var i = 0; i < userVals.length; i++) {
+          var u = userVals[i][0];
+          if (u && u.toString().trim().toLowerCase() === usuarioIdStr) {
+            var d = parsePossiblySheetDate(dateVals[i][0]);
+            if (d && (!maxDate || d.getTime() > maxDate.getTime())) {
+              maxDate = d;
+            }
+          }
         }
+      } catch (e) {
+        console.warn('Error leyendo columnas en ' + sheetName, e);
       }
-    });
+    }
 
-    // 2) (OPCIONAL) Escaneo profundo en tiempo real
-    // Desactivado por defecto para velocidad (lo hace el trigger buildUltimaActividadIndex)
-    // Solo si no se encontró nada, podríamos hacer un escaneo rápido en 'Comentarios' 
-    // PERO esto causa timeouts. Mejor confiar en el índice.
+    // 1. Leads (AE=31, B=2)
+    checkSheetCols('Leads', 31, 2);
+
+    // 2. Tareas (I=9, F=6)
+    checkSheetCols('Tareas', 9, 6);
+
+    // 3. Agenda (I=9, J=10)
+    checkSheetCols('Agenda', 9, 10);
 
     // Formatear resultado
     if (maxDate) return Fechas && Fechas.formatear ? Fechas.formatear(maxDate) : maxDate.toLocaleString();
-    return null;
+    return "Sin actividad reciente";
+
   } catch (error) {
     console.error('❌ Error en getUltimaActividadAsociado:', error);
     return null;
