@@ -33,8 +33,10 @@ function getEstadisticasUsuario(usuarioId) {
     const metricas = Metricas.calcular(leads, { usuarioId });
     
     // 3. Formatear leads para tabla
+    var indexMap = {};
+    try { indexMap = Usuarios.getUltimaActividadMap() || {}; } catch (e) { indexMap = {}; }
     const todosLosLeads = leads
-      .map(lead => Leads.formatearLead(lead))
+      .map(lead => Leads.formatearLead(lead, indexMap))
       .sort((a, b) => {
         const fechaA = a.fecha === 'Sin fecha' ? 0 : new Date(a.fecha).getTime() || 0;
         const fechaB = b.fecha === 'Sin fecha' ? 0 : new Date(b.fecha).getTime() || 0;
@@ -127,8 +129,10 @@ function getEstadisticasUsuarioConFiltros(usuarioId, filtros = {}) {
     const metricasCuentas = Metricas.calcularMetricasCuentas(leadsFiltrados);
     
     // 4. Formatear leads
+    var indexMap = {};
+    try { indexMap = Usuarios.getUltimaActividadMap() || {}; } catch (e) { indexMap = {}; }
     const todosLosLeads = leadsFiltrados
-      .map(lead => Leads.formatearLead(lead))
+      .map(lead => Leads.formatearLead(lead, indexMap))
       .sort((a, b) => {
         const fechaA = a.fecha === 'Sin fecha' ? 0 : new Date(a.fecha).getTime() || 0;
         const fechaB = b.fecha === 'Sin fecha' ? 0 : new Date(b.fecha).getTime() || 0;
@@ -241,8 +245,11 @@ function getDashboardData(filtros = {}) {
       estadosDisponibles: Object.keys(Leads.MAPA_ESTADOS),
       
       // Leads formateados (si hay usuario)
-      leadsUsuario: filtros.usuarioId ? 
-        Leads.formatearLeads(leadsUsuarioFiltrados || []) : []
+      leadsUsuario: (function(){
+        if (!filtros.usuarioId) return [];
+        try { var indexMap = Usuarios.getUltimaActividadMap() || {}; } catch(e){ indexMap = {}; }
+        return Leads.formatearLeads(leadsUsuarioFiltrados || [], indexMap);
+      })(),
     };
     
   } catch (error) {

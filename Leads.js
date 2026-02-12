@@ -118,14 +118,25 @@ var Leads = (function() {
    * @param {Object} lead - Objeto lead
    * @returns {Object} Lead formateado
    */
-  function formatearLead(lead) {
+  function formatearLead(lead, indexMap) {
     const nombreCompleto = `${lead.nombre || ''} ${lead.apellido || ''}`.trim() || 'Sin nombre';
     // Calcular última actividad específica por lead
     var ultimaActividad = null;
     try {
+      // 1) preferir valor de la propia fila
       if (lead && lead.ultimaGestion) {
         ultimaActividad = parsePossiblySheetDate(lead.ultimaGestion);
       }
+
+      // 2) intentar obtener desde índice precomputado si está disponible
+      if (!ultimaActividad && indexMap) {
+        var key = lead.leadId !== undefined && lead.leadId !== null ? lead.leadId.toString() : '';
+        if (key && indexMap[key]) {
+          ultimaActividad = parsePossiblySheetDate(indexMap[key].ultimaISO);
+        }
+      }
+
+      // 3) fallback: escaneo directo (lento)
       if (!ultimaActividad) {
         var fromScan = getUltimaActividadPorLead(lead.leadId);
         if (fromScan) ultimaActividad = fromScan;
@@ -163,7 +174,10 @@ var Leads = (function() {
    */
   function formatearLeads(leads) {
     if (!leads || !leads.length) return [];
-    return leads.map(lead => formatearLead(lead));
+    // allow optional indexMap as last arg
+    var indexMap = null;
+    if (arguments.length > 1) indexMap = arguments[1];
+    return leads.map(lead => formatearLead(lead, indexMap));
   }
   
   /**
@@ -173,7 +187,11 @@ var Leads = (function() {
    */
   function getLeadsFormateadosPorUsuario(usuarioId) {
     const leads = getLeadsPorUsuario(usuarioId);
-    return formatearLeads(leads).sort((a, b) => {
+    // obtener índice de última actividad si existe
+    var indexMap = {};
+    try { indexMap = Usuarios.getUltimaActividadMap() || {}; } catch (e) { indexMap = {}; }
+
+    return formatearLeads(leads, indexMap).sort((a, b) => {
       const fechaA = a.fecha === 'Sin fecha' ? 0 : new Date(a.fecha).getTime() || 0;
       const fechaB = b.fecha === 'Sin fecha' ? 0 : new Date(b.fecha).getTime() || 0;
       return fechaB - fechaA;

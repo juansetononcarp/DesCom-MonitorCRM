@@ -431,3 +431,114 @@ function getDiagnosticoRapido(usuarioId, maxRows) {
     return { error: e && e.toString() };
   }
 }
+
+/**
+ * Reconstruye la hoja `Ultima_Actividad` con la última fecha por LeadID.
+ * Escanea las hojas de actividad y guarda: LeadID | ultimaISO | origen | actor | fila
+ */
+function buildUltimaActividadIndex() {
+  try {
+    var start = new Date().getTime();
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheetName = 'Ultima_Actividad';
+
+    // Mapa temporal
+    var index = {};
+
+    var candidateSheets = ['Comentarios','Agenda','Tareas','Viajes','Leads'];
+
+    candidateSheets.forEach(function(sName) {
+      var sheet = ss.getSheetByName(sName);
+      if (!sheet) return;
+
+      var lastRow = sheet.getLastRow();
+      var lastCol = sheet.getLastColumn();
+      if (lastRow < 2) return;
+
+      var headers = sheet.getRange(1,1,1,lastCol).getValues()[0] || [];
+      // buscar columna leadId
+      var leadCol = -1;
+      for (var c=0;c<headers.length;c++){
+        var h = headers[c] ? headers[c].toString().toLowerCase() : '';
+        if (/lead\s*id|leadid|lead|id\b/.test(h)) { leadCol = c; break; }
+      }
+      // buscar columna fecha
+      var dateCol = -1;
+      for (var c=0;c<headers.length;c++){
+        var h = headers[c] ? headers[c].toString().toLowerCase() : '';
+        if (/(fecha|date|created|timestamp|hora|time|datetime|creado)/.test(h)) { dateCol = c; break; }
+      }
+      // actor col heurística
+      var actorCols = { 'Tareas':8, 'Agenda':8, 'Comentarios':6 };
+      var actorCol = actorCols[sName] !== undefined ? actorCols[sName] : -1;
+
+      var data = sheet.getRange(2,1,lastRow-1,lastCol).getValues();
+
+      for (var r=0;r<data.length;r++){
+        var row = data[r];
+        var leadVal = null;
+        if (leadCol >=0 && leadCol < row.length) leadVal = row[leadCol];
+        if (!leadVal) {
+          // intentar detectar en fila
+          for (var c=0;c<Math.min(row.length,10);c++){
+            if (row[c] && row[c].toString().match(/[A-Za-z0-9\-]{2,}/)) { leadVal = row[c]; break; }
+          }
+        }
+        if (!leadVal) continue;
+        var leadId = leadVal.toString().trim();
+
+        var dateVal = null;
+        if (dateCol >=0 && dateCol < row.length) dateVal = row[dateCol];
+        // fallback: buscar cualquier fecha en la fila
+        if (!dateVal) {
+          for (var c=0;c<row.length;c++){
+            var d = parsePossiblySheetDate(row[c]);
+            if (d) { dateVal = d; break; }
+          }
+        }
+        var parsed = parsePossiblySheetDate(dateVal);
+        if (!parsed) continue;
+
+        var actor = (actorCol>=0 && actorCol<row.length && row[actorCol]) ? row[actorCol].toString() : '';
+
+        var existing = index[leadId];
+        if (!existing || parsed.getTime() > new Date(existing.ultimaISO).getTime()) {
+          index[leadId] = { ultimaISO: parsed.toISOString(), origen: sName, actor: actor, fila: r+2 };
+        }
+      }
+    });
+
+    // Escribir hoja
+    var outSheet = ss.getSheetByName(sheetName);
+    if (!outSheet) outSheet = ss.insertSheet(sheetName);
+    outSheet.clear();
+    var rows = [['LeadID','ultimaISO','origen','actor','fila']];
+    Object.keys(index).forEach(function(k){ rows.push([k, index[k].ultimaISO, index[k].origen, index[k].actor, index[k].fila]); });
+    if (rows.length>0) outSheet.getRange(1,1,rows.length,rows[0].length).setValues(rows);
+
+    return { success:true, total: Object.keys(index).length, tiempoMs: new Date().getTime()-start };
+  } catch (e) {
+    return { success:false, error: e && e.toString() };
+  }
+}
+
+/**
+ * Lee la hoja `Ultima_Actividad` y devuelve un mapa { leadId: {ultimaISO, origen, actor, fila} }
+ */
+function getUltimaActividadMap() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName('Ultima_Actividad');
+    if (!sheet) return {};
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 2) return {};
+    var data = sheet.getRange(2,1,lastRow-1,5).getValues();
+    var map = {};
+    data.forEach(function(row){
+      var k = row[0] ? row[0].toString() : '';
+      if (!k) return;
+      map[k.toString()] = { ultimaISO: row[1]||null, origen: row[2]||null, actor: row[3]||null, fila: row[4]||null };
+    });
+    return map;
+  } catch (e) { return {}; }
+}
