@@ -1,0 +1,221 @@
+// ============================================
+// MÓDULO: LEADS
+// ============================================
+
+var Leads = (function() {
+  
+  // ===== CONFIGURACIÓN DE COLUMNAS =====
+  const CONFIG = {
+    // Columnas principales
+    COL_ID_USUARIO: 2,     // Columna C - "AC asignado"
+    COL_ESTADO: 37,        // Columna AL - "ESTADO"
+    COL_ID_LEAD: 0,        // Columna A - "LeadID"
+    COL_NOMBRE: 4,         // Columna E - "Nombre"
+    COL_APELLIDO: 5,       // Columna F - "Apellido"
+    COL_FECHA: 1,          // Columna B - "Fecha de asignación"
+    
+    // Columnas adicionales (para futuras métricas)
+    COL_CREADO_POR: 30,    // Columna AE - "Creado por"
+    COL_ULTIMA_GESTION: 38 // Columna AM - "Ult Coment AC"
+  };
+  
+  // ===== MAPEO DE ESTADOS - VERSIÓN COMPLETA CON 6 ESTADOS =====
+  const MAPA_ESTADOS = {
+    'NUEVO': ['NUEVO', 'NUEVA'],
+    'ABIERTO': ['ABIERTO', 'ABIERTA'],
+    'CONVERTIDO': ['CONVERTIDO', 'CONVERTIDA'],
+    'ACTIVO': ['ACTIVO', 'ACTIVA'],
+    'OPERANDO': ['OPERANDO'],
+    'DESCARTADO': ['DESCARTADO', 'DESCARTADA', 'PERDIDO', 'PERDIDA'],
+    'OTROS': []
+  };
+  
+  /**
+   * Obtiene todos los leads de la hoja 'Leads'
+   * @returns {Array} Array de objetos lead
+   */
+  function getLeads() {
+    try {
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      const sheet = ss.getSheetByName('Leads');
+      
+      if (!sheet) throw new Error('No se encontró la hoja "Leads"');
+      
+      const lastRow = sheet.getLastRow();
+      const lastColumn = sheet.getLastColumn();
+      
+      if (lastRow < 2) return [];
+      
+      const data = sheet.getRange(2, 1, lastRow - 1, lastColumn).getValues();
+      
+      const leads = data.map(row => ({
+        // Datos básicos
+        idUsuario: row[CONFIG.COL_ID_USUARIO] ? row[CONFIG.COL_ID_USUARIO].toString().trim() : '',
+        estado: row[CONFIG.COL_ESTADO] ? row[CONFIG.COL_ESTADO].toString().trim() : '',
+        leadId: row[CONFIG.COL_ID_LEAD],
+        nombre: row[CONFIG.COL_NOMBRE] || '',
+        apellido: row[CONFIG.COL_APELLIDO] || '',
+        fecha: row[CONFIG.COL_FECHA],
+        
+        // Datos adicionales
+        creadoPor: row[CONFIG.COL_CREADO_POR] ? row[CONFIG.COL_CREADO_POR].toString().trim() : '',
+        ultimaGestion: row[CONFIG.COL_ULTIMA_GESTION] || null,
+        
+        // Fila original para acceso futuro
+        _filaOriginal: row,
+        _filaNumero: data.indexOf(row) + 2
+      }));
+      
+      console.log(`✅ Leads.getLeads: ${leads.length} leads obtenidos`);
+      return leads;
+      
+    } catch (error) {
+      console.error('❌ Error en Leads.getLeads:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Obtiene leads filtrados por usuario
+   * @param {string} usuarioId - Email del usuario
+   * @returns {Array} Leads del usuario
+   */
+  function getLeadsPorUsuario(usuarioId) {
+    const todosLosLeads = getLeads();
+    const usuarioIdStr = usuarioId.toString().trim().toLowerCase();
+    
+    const leadsFiltrados = todosLosLeads.filter(lead => 
+      lead.idUsuario && lead.idUsuario.toLowerCase() === usuarioIdStr
+    );
+    
+    console.log(`✅ Leads.getLeadsPorUsuario: ${leadsFiltrados.length} leads para ${usuarioId}`);
+    return leadsFiltrados;
+  }
+  
+  /**
+   * Clasifica un estado según el mapeo (VERSIÓN ACTUALIZADA CON 6 ESTADOS)
+   * @param {string} estadoRaw - Estado original
+   * @returns {string} Estado clasificado
+   */
+  function clasificarEstado(estadoRaw) {
+    if (!estadoRaw) return 'OTROS';
+    
+    const estado = estadoRaw.toString().trim().toUpperCase();
+    
+    for (const [categoria, palabras] of Object.entries(MAPA_ESTADOS)) {
+      for (const palabra of palabras) {
+        if (estado.includes(palabra)) {
+          return categoria;
+        }
+      }
+    }
+    
+    return 'OTROS';
+  }
+  
+  /**
+   * Formatea un lead para el frontend
+   * @param {Object} lead - Objeto lead
+   * @returns {Object} Lead formateado
+   */
+  function formatearLead(lead) {
+    const nombreCompleto = `${lead.nombre || ''} ${lead.apellido || ''}`.trim() || 'Sin nombre';
+    
+    return {
+      id: lead.leadId !== undefined && lead.leadId !== null ? lead.leadId.toString() : 'N/A',
+      nombre: nombreCompleto,
+      fecha: Fechas.formatear(lead.fecha),
+      estado: lead.estado || 'Sin estado',
+      estadoClasificado: clasificarEstado(lead.estado),
+      
+      // Datos adicionales
+      creadoPor: lead.creadoPor || null,
+      ultimaGestion: lead.ultimaGestion || null
+    };
+  }
+  
+  /**
+   * Formatea múltiples leads
+   * @param {Array} leads - Array de leads
+   * @returns {Array} Leads formateados
+   */
+  function formatearLeads(leads) {
+    if (!leads || !leads.length) return [];
+    return leads.map(lead => formatearLead(lead));
+  }
+  
+  /**
+   * Obtiene leads formateados por usuario
+   * @param {string} usuarioId - Email del usuario
+   * @returns {Array} Leads formateados
+   */
+  function getLeadsFormateadosPorUsuario(usuarioId) {
+    const leads = getLeadsPorUsuario(usuarioId);
+    return formatearLeads(leads).sort((a, b) => {
+      const fechaA = a.fecha === 'Sin fecha' ? 0 : new Date(a.fecha).getTime() || 0;
+      const fechaB = b.fecha === 'Sin fecha' ? 0 : new Date(b.fecha).getTime() || 0;
+      return fechaB - fechaA;
+    });
+  }
+  
+  /**
+   * Obtiene estadísticas de estados para un conjunto de leads (VERSIÓN ACTUALIZADA)
+   * @param {Array} leads - Array de leads
+   * @returns {Object} Conteo de estados
+   */
+  function contarEstados(leads) {
+    const conteo = {
+      'NUEVO': 0,
+      'ABIERTO': 0,
+      'CONVERTIDO': 0,
+      'ACTIVO': 0,
+      'OPERANDO': 0,
+      'DESCARTADO': 0,
+      'OTROS': 0
+    };
+    
+    const otrosDetalles = {};
+    
+    leads.forEach(lead => {
+      const estadoClasificado = clasificarEstado(lead.estado);
+      
+      if (conteo.hasOwnProperty(estadoClasificado)) {
+        conteo[estadoClasificado]++;
+      } else {
+        conteo['OTROS']++;
+        otrosDetalles[lead.estado] = (otrosDetalles[lead.estado] || 0) + 1;
+      }
+    });
+    
+    return { conteo, otrosDetalles };
+  }
+  
+  /**
+   * Calcula porcentajes de estados
+   * @param {Object} conteo - Objeto con conteos
+   * @param {number} total - Total de leads
+   * @returns {Object} Porcentajes
+   */
+  function calcularPorcentajes(conteo, total) {
+    const porcentajes = {};
+    Object.keys(conteo).forEach(key => {
+      porcentajes[key] = total > 0 ? Math.round((conteo[key] / total) * 100) : 0;
+    });
+    return porcentajes;
+  }
+  
+  // API Pública
+  return {
+    CONFIG: CONFIG,
+    MAPA_ESTADOS: MAPA_ESTADOS,
+    getLeads: getLeads,
+    getLeadsPorUsuario: getLeadsPorUsuario,
+    getLeadsFormateadosPorUsuario: getLeadsFormateadosPorUsuario,
+    clasificarEstado: clasificarEstado,
+    formatearLead: formatearLead,
+    formatearLeads: formatearLeads,
+    contarEstados: contarEstados,
+    calcularPorcentajes: calcularPorcentajes
+  };
+  
+})();

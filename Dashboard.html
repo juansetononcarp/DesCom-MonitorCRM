@@ -1,0 +1,1449 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <title>Dashboard de Leads</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <style>
+    /* ========== ESTILOS CSS ========== */
+    :root {
+      --primary: #4285f4;
+      --success: #34a853;
+      --warning: #fbbc05;
+      --danger: #ea4335;
+      --dark: #202124;
+      --light: #f8f9fa;
+      --gray: #dadce0;
+      --radius: 8px;
+      --shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+    }
+    
+    body {
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: var(--dark);
+    }
+    
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    /* HEADER */
+    .header {
+      background: white;
+      padding: 25px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      margin-bottom: 25px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+    
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+    
+    .logo h1 {
+      color: var(--primary);
+      font-size: 28px;
+      font-weight: 600;
+    }
+    
+    /* SELECTOR */
+    .select-container {
+      min-width: 320px;
+      flex: 1;
+      max-width: 400px;
+    }
+    
+    .select-container label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: var(--dark);
+      font-size: 14px;
+    }
+    
+    .select-container select {
+      width: 100%;
+      padding: 12px 15px;
+      border: 2px solid var(--gray);
+      border-radius: var(--radius);
+      font-size: 15px;
+      background: white;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      appearance: none;
+      background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+      background-repeat: no-repeat;
+      background-position: right 15px center;
+      background-size: 18px;
+    }
+    
+    .select-container select:hover {
+      border-color: var(--primary);
+    }
+    
+    .select-container select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.1);
+    }
+    
+    /* GRID */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 25px;
+      margin-bottom: 25px;
+    }
+    
+    /* CARDS */
+    .card {
+      background: white;
+      border-radius: var(--radius);
+      padding: 25px;
+      box-shadow: var(--shadow);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    }
+    
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid var(--light);
+    }
+    
+    .card-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--dark);
+    }
+    
+    .card-icon {
+      font-size: 24px;
+    }
+    
+    /* STATS GRID */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 15px;
+      margin-top: 10px;
+    }
+    
+    .stat-item {
+      text-align: center;
+      padding: 15px;
+      background: var(--light);
+      border-radius: var(--radius);
+      transition: background 0.3s ease;
+    }
+    
+    .stat-item:hover {
+      background: var(--gray);
+    }
+    
+    .stat-value {
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 5px;
+      line-height: 1;
+    }
+    
+    .stat-label {
+      font-size: 13px;
+      color: #666;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    /* PROGRESS BARS */
+    .progress-bar {
+      height: 6px;
+      background: var(--gray);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.5s ease;
+    }
+    
+    /* ESTADO BADGES */
+    .estado-badge {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+    
+    .estado-NUEVO {
+      background: #e3f2fd;
+      color: #1976d2;
+    }
+    
+    .estado-ABIERTO {
+      background: #e8f5e9;
+      color: #2e7d32;
+    }
+    
+    .estado-CONVERTIDO {
+      background: #fff3e0;
+      color: #ef6c00;
+    }
+    
+    .estado-ACTIVO {
+      background: #ffebee;
+      color: #c62828;
+    }
+    
+    .estado-OPERANDO {
+      background: #f3e5f5;
+      color: #7b1fa2;
+    }
+    
+    .estado-DESCARTADO {
+      background: #f5f5f5;
+      color: #616161;
+    }
+    
+    .estado-OTROS {
+      background: #eeeeee;
+      color: #424242;
+    }
+    
+    /* TABLE */
+    .table-container {
+      overflow-x: auto;
+      margin-top: 15px;
+      max-height: 500px;
+      overflow-y: auto;
+      border: 1px solid var(--gray);
+      border-radius: var(--radius);
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    
+    th {
+      background: var(--light);
+      padding: 14px 12px;
+      text-align: left;
+      font-weight: 600;
+      color: var(--dark);
+      border-bottom: 2px solid var(--gray);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    
+    td {
+      padding: 12px;
+      border-bottom: 1px solid var(--gray);
+    }
+    
+    tr:hover {
+      background: var(--light);
+    }
+    
+    /* SEARCH BAR */
+    .search-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    
+    .search-box {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      background: white;
+      border: 2px solid var(--gray);
+      border-radius: var(--radius);
+      padding: 8px 15px;
+      transition: all 0.3s ease;
+    }
+    
+    .search-box:focus-within {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.1);
+    }
+    
+    .search-box input {
+      flex: 1;
+      border: none;
+      padding: 8px;
+      font-size: 14px;
+      outline: none;
+    }
+    
+    .search-icon {
+      color: #666;
+      font-size: 18px;
+      margin-right: 8px;
+    }
+    
+    .clear-search {
+      cursor: pointer;
+      color: #666;
+      font-size: 18px;
+      padding: 4px;
+    }
+    
+    .clear-search:hover {
+      color: var(--danger);
+    }
+    
+    /* PAGINATION */
+    .pagination {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 20px;
+      padding: 15px 0;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+    
+    .pagination-info {
+      color: #666;
+      font-size: 14px;
+    }
+    
+    .pagination-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .page-btn {
+      padding: 8px 14px;
+      border: 1px solid var(--gray);
+      background: white;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 14px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    
+    .page-btn:hover:not(:disabled) {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+    
+    .page-btn.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+    
+    .page-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .page-size-selector {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+    }
+    
+    .page-size-selector select {
+      padding: 8px;
+      border: 1px solid var(--gray);
+      border-radius: var(--radius);
+      outline: none;
+      cursor: pointer;
+    }
+    
+    .page-size-selector select:hover {
+      border-color: var(--primary);
+    }
+    
+    /* CHART */
+    .chart-container {
+      height: 250px;
+      position: relative;
+      margin: 15px 0;
+    }
+    
+    .update-time {
+      text-align: center;
+      margin-top: 15px;
+      color: #666;
+      font-size: 13px;
+    }
+    
+    /* BUTTONS */
+    .btn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 15px;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid transparent;
+    }
+    
+    .btn:hover {
+      background: #3367d6;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
+    }
+    
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .btn-secondary {
+      background: white;
+      color: var(--dark);
+      border: 1px solid var(--gray);
+      padding: 8px 16px;
+      font-size: 13px;
+    }
+    
+    .btn-secondary:hover {
+      background: var(--light);
+      box-shadow: none;
+    }
+    
+    .btn-icon {
+      font-size: 16px;
+    }
+    
+    /* LOADING */
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #666;
+    }
+    
+    .loading-spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid var(--primary);
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    /* ALERTS */
+    .alert {
+      padding: 15px 20px;
+      border-radius: var(--radius);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+      animation: slideIn 0.3s ease;
+    }
+    
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .alert-info {
+      background: #e3f2fd;
+      color: #1976d2;
+      border-left: 5px solid #1976d2;
+    }
+    
+    .alert-error {
+      background: #ffebee;
+      color: #c62828;
+      border-left: 5px solid #c62828;
+    }
+    
+    /* FOOTER */
+    .footer {
+      text-align: center;
+      margin-top: 30px;
+      color: #666;
+      font-size: 13px;
+      padding: 20px;
+      background: white;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+    
+    /* RESPONSIVE */
+    @media (max-width: 768px) {
+      body { padding: 10px; }
+      .container { padding: 10px; }
+      .header { flex-direction: column; align-items: stretch; }
+      .select-container { max-width: 100%; }
+      .dashboard-grid { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .pagination { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    
+    <!-- ========== HEADER CON FILTROS ========== -->
+    <div class="header">
+      <div class="logo">
+        <div class="card-icon">📊</div>
+        <h1>Dashboard de Leads</h1>
+      </div>
+      
+      <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end;">
+        
+        <!-- SELECTOR DE USUARIO -->
+        <div class="select-container" style="min-width: 250px;">
+          <label for="selectUsuario">👤 Asesor:</label>
+          <select id="selectUsuario">
+            <option value="">Cargando usuarios...</option>
+          </select>
+        </div>
+        
+        <!-- SELECTOR DE AÑO -->
+        <div class="select-container" style="min-width: 120px;">
+          <label for="selectAnio">📅 Año:</label>
+          <select id="selectAnio" onchange="aplicarFiltros()">
+            <option value="">Todos</option>
+          </select>
+        </div>
+        
+        <!-- SELECTOR DE MES -->
+        <div class="select-container" style="min-width: 140px;">
+          <label for="selectMes">📆 Mes:</label>
+          <select id="selectMes" onchange="aplicarFiltros()">
+            <option value="">Todos</option>
+            <option value="1">Enero</option>
+            <option value="2">Febrero</option>
+            <option value="3">Marzo</option>
+            <option value="4">Abril</option>
+            <option value="5">Mayo</option>
+            <option value="6">Junio</option>
+            <option value="7">Julio</option>
+            <option value="8">Agosto</option>
+            <option value="9">Septiembre</option>
+            <option value="10">Octubre</option>
+            <option value="11">Noviembre</option>
+            <option value="12">Diciembre</option>
+          </select>
+        </div>
+        
+        <!-- BOTÓN ACTUALIZAR -->
+        <button class="btn" onclick="refreshData()">
+          <span class="btn-icon">🔄</span> Actualizar
+        </button>
+        
+      </div>
+    </div>
+    
+    <!-- ========== ESTADÍSTICAS GENERALES ========== -->
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">📈 Estadísticas Generales</h2>
+        <div class="card-icon">🌐</div>
+      </div>
+      
+      <div class="stats-grid">
+        <div class="stat-item">
+          <div class="stat-value" id="totalGeneralLeads">0</div>
+          <div class="stat-label">Total Leads</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="totalUsuarios">0</div>
+          <div class="stat-label">Asesores</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="generalNuevos">0</div>
+          <div class="stat-label">Nuevos</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="generalAbiertos">0</div>
+          <div class="stat-label">Abiertos</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="generalConvertidos">0</div>
+          <div class="stat-label">Convertidos</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="generalActivos">0</div>
+          <div class="stat-label">Activos</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="generalOperando">0</div>
+          <div class="stat-label">Operando</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="generalDescartados">0</div>
+          <div class="stat-label">Descartados</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- ========== DASHBOARD GRID ========== -->
+    <div class="dashboard-grid">
+      
+      <!-- CARD: RESUMEN USUARIO -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title" id="usuarioSeleccionado">Selecciona un asesor</h2>
+          <div class="card-icon">👤</div>
+        </div>
+        
+        <div id="resumenUsuario" class="alert alert-info">
+          Selecciona un asesor para ver sus estadísticas
+        </div>
+        
+        <div class="stats-grid">
+          <div class="stat-item">
+            <div class="stat-value" id="totalLeads">0</div>
+            <div class="stat-label">Total Leads</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- CARD: DISTRIBUCIÓN POR ESTADO (6 ESTADOS) -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">📊 Distribución</h2>
+          <div class="card-icon">📈</div>
+        </div>
+        
+        <div class="stats-grid">
+          <!-- NUEVO -->
+          <div class="stat-item">
+            <div class="stat-value" id="contadorNuevos">0</div>
+            <div class="stat-label">Nuevos</div>
+            <div class="progress-bar">
+              <div class="progress-fill" id="progressNUEVO"></div>
+            </div>
+          </div>
+          
+          <!-- ABIERTO -->
+          <div class="stat-item">
+            <div class="stat-value" id="contadorAbiertos">0</div>
+            <div class="stat-label">Abiertos</div>
+            <div class="progress-bar">
+              <div class="progress-fill" id="progressABIERTO"></div>
+            </div>
+          </div>
+          
+          <!-- CONVERTIDO -->
+          <div class="stat-item">
+            <div class="stat-value" id="contadorConvertidos">0</div>
+            <div class="stat-label">Convertidos</div>
+            <div class="progress-bar">
+              <div class="progress-fill" id="progressCONVERTIDO"></div>
+            </div>
+          </div>
+          
+          <!-- ACTIVO -->
+          <div class="stat-item">
+            <div class="stat-value" id="contadorActivos">0</div>
+            <div class="stat-label">Activos</div>
+            <div class="progress-bar">
+              <div class="progress-fill" id="progressACTIVO"></div>
+            </div>
+          </div>
+          
+          <!-- OPERANDO -->
+          <div class="stat-item">
+            <div class="stat-value" id="contadorOperando">0</div>
+            <div class="stat-label">Operando</div>
+            <div class="progress-bar">
+              <div class="progress-fill" id="progressOPERANDO"></div>
+            </div>
+          </div>
+          
+          <!-- DESCARTADO -->
+          <div class="stat-item">
+            <div class="stat-value" id="contadorDescartados">0</div>
+            <div class="stat-label">Descartados</div>
+            <div class="progress-bar">
+              <div class="progress-fill" id="progressDESCARTADO"></div>
+            </div>
+          </div>
+          
+          <!-- OTROS -->
+          <div class="stat-item">
+            <div class="stat-value" id="contadorOtros">0</div>
+            <div class="stat-label">Otros</div>
+            <div class="progress-bar">
+              <div class="progress-fill" id="progressOTROS"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- CARD: GRÁFICO -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">🥧 Gráfico</h2>
+          <div class="card-icon">📉</div>
+        </div>
+        
+        <div class="chart-container">
+          <canvas id="graficoEstados"></canvas>
+        </div>
+        
+        <div class="update-time">
+          <i>Actualizado: <span id="fechaActualizacion">--:--</span></i>
+        </div>
+      </div>
+      
+    </div>
+    
+    <!-- ========== TABLA COMPLETA DE LEADS ========== -->
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">📋 Todos los Leads</h2>
+        <div class="card-icon">🔍</div>
+      </div>
+      
+      <!-- BARRA DE BÚSQUEDA -->
+      <div class="search-container">
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="searchInput" placeholder="Buscar por ID, nombre, fecha o estado..." onkeyup="filtrarLeads()">
+          <span class="clear-search" onclick="limpiarBusqueda()" style="display: none;">✕</span>
+        </div>
+        <span id="resultCount" style="font-size: 14px; color: #666; white-space: nowrap;"></span>
+      </div>
+      
+      <!-- TABLA CON SCROLL -->
+      <div class="table-container" id="tableContainer">
+        <table>
+          <thead>
+            <tr>
+              <th onclick="ordenarLeads('id')" style="cursor: pointer;">ID ⬍</th>
+              <th onclick="ordenarLeads('nombre')" style="cursor: pointer;">Nombre ⬍</th>
+              <th onclick="ordenarLeads('fecha')" style="cursor: pointer;">Fecha ⬍</th>
+              <th onclick="ordenarLeads('estado')" style="cursor: pointer;">Estado ⬍</th>
+            </tr>
+          </thead>
+          <tbody id="leadsTableBody">
+            <tr>
+              <td colspan="4" class="loading">Selecciona un asesor para ver sus leads</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      
+      <!-- PAGINACIÓN -->
+      <div class="pagination" id="pagination">
+        <div class="pagination-info">
+          Mostrando <span id="startItem">0</span> - <span id="endItem">0</span> de <span id="totalItems">0</span> leads
+        </div>
+        <div class="pagination-controls">
+          <div class="page-size-selector">
+            <span>Mostrar:</span>
+            <select id="pageSizeSelect" onchange="cambiarPageSize()">
+              <option value="10">10</option>
+              <option value="25" selected>25</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+              <option value="0">Todos</option>
+            </select>
+          </div>
+          <button class="page-btn" onclick="cambiarPagina('primera')" id="firstPageBtn" disabled>⏮️</button>
+          <button class="page-btn" onclick="cambiarPagina('anterior')" id="prevPageBtn" disabled>◀</button>
+          <span id="pageInfo" style="margin: 0 10px; font-weight: 500;">Página 1 de 1</span>
+          <button class="page-btn" onclick="cambiarPagina('siguiente')" id="nextPageBtn" disabled>▶</button>
+          <button class="page-btn" onclick="cambiarPagina('ultima')" id="lastPageBtn" disabled>⏭️</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- ========== FOOTER ========== -->
+    <div class="footer">
+      <p>📊 Dashboard - Google Apps Script</p>
+      <p style="margin-top: 10px;">
+        <button onclick="testConexion()" class="btn btn-secondary">🔧 Test</button>
+        <button onclick="exportarExcel()" class="btn btn-secondary">📥 Exportar</button>
+      </p>
+    </div>
+    
+  </div>
+  
+  <script>
+    // ============================================
+    // JAVASCRIPT - DASHBOARD COMPLETO
+    // ============================================
+    
+    // ========== VARIABLES GLOBALES ==========
+    let currentUser = null;
+    let chartInstance = null;
+    let usuariosCache = [];
+    let todosLosLeads = [];
+    let leadsFiltrados = [];
+    let paginaActual = 1;
+    let itemsPorPagina = 25;
+    let ordenActual = { columna: 'fecha', direccion: 'desc' };
+    
+    // Filtros de fecha
+    let filtrosActuales = {
+      anio: '',
+      mes: '',
+      usuarioId: null
+    };
+    
+    // ========== INICIALIZACIÓN ==========
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('🚀 Dashboard iniciando...');
+      inicializarDashboard();
+    });
+    
+    async function inicializarDashboard() {
+      try {
+        mostrarLoading();
+        
+        // Cargar años disponibles
+        await cargarAniosDisponibles();
+        
+        // Cargar usuarios y estadísticas
+        await cargarUsuarios();
+        await cargarEstadisticasGenerales();
+        
+        ocultarLoading();
+        console.log('✅ Dashboard listo');
+        
+      } catch (error) {
+        console.error('❌ Error:', error);
+        ocultarLoading();
+        mostrarError('Error al cargar el dashboard');
+      }
+    }
+    
+    // ========== FILTROS DE FECHA ==========
+    
+    async function cargarAniosDisponibles() {
+      try {
+        const data = await new Promise((resolve, reject) => {
+          google.script.run
+            .withSuccessHandler(resolve)
+            .withFailureHandler(reject)
+            .getAniosDisponibles();
+        });
+        
+        const selectAnio = document.getElementById('selectAnio');
+        const valorActual = selectAnio.value;
+        
+        selectAnio.innerHTML = '<option value="">Todos los años</option>';
+        
+        if (data && data.length > 0) {
+          data.forEach(anio => {
+            const option = document.createElement('option');
+            option.value = anio;
+            option.textContent = anio;
+            selectAnio.appendChild(option);
+          });
+        }
+        
+        if (valorActual) selectAnio.value = valorActual;
+        
+      } catch (error) {
+        console.error('Error cargando años:', error);
+      }
+    }
+    
+    function aplicarFiltros() {
+      filtrosActuales = {
+        anio: document.getElementById('selectAnio').value,
+        mes: document.getElementById('selectMes').value,
+        usuarioId: currentUser
+      };
+      
+      if (currentUser) {
+        cargarEstadisticasUsuario(currentUser, filtrosActuales);
+      }
+      
+      cargarEstadisticasGenerales(filtrosActuales);
+    }
+    
+    // ========== FUNCIONES DE CARGA ==========
+    
+    function cargarUsuarios() {
+      return new Promise((resolve, reject) => {
+        console.log('🔄 Solicitando usuarios...');
+        
+        google.script.run
+          .withSuccessHandler(function(usuarios) {
+            console.log('✅ Usuarios recibidos:', usuarios.length);
+            usuariosCache = usuarios;
+            
+            const select = document.getElementById('selectUsuario');
+            if (!select) {
+              reject('No se encontró el selector');
+              return;
+            }
+            
+            select.innerHTML = '';
+            
+            if (!usuarios || usuarios.length === 0) {
+              select.innerHTML = '<option value="">No hay usuarios</option>';
+              resolve([]);
+              return;
+            }
+            
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = '👤 Selecciona un asesor';
+            defaultOption.selected = true;
+            select.appendChild(defaultOption);
+            
+            usuarios.forEach(usuario => {
+              const option = document.createElement('option');
+              option.value = usuario.id;
+              option.textContent = usuario.nombre;
+              select.appendChild(option);
+            });
+            
+            select.onchange = function() {
+              const userId = this.value;
+              if (userId) {
+                currentUser = userId;
+                filtrosActuales.usuarioId = userId;
+                cargarEstadisticasUsuario(userId, filtrosActuales);
+              } else {
+                currentUser = null;
+                filtrosActuales.usuarioId = null;
+                limpiarUIUsuario();
+              }
+            };
+            
+            resolve(usuarios);
+          })
+          .withFailureHandler(function(error) {
+            console.error('❌ Error cargando usuarios:', error);
+            mostrarError('Error al cargar usuarios');
+            reject(error);
+          })
+          .getUsuarios();
+      });
+    }
+    
+    function cargarEstadisticasUsuario(usuarioId, filtros = {}) {
+      if (!usuarioId) return;
+      
+      console.log(`📊 Cargando estadísticas para: ${usuarioId}`, filtros);
+      mostrarLoading();
+      
+      google.script.run
+        .withSuccessHandler(function(data) {
+          console.log('✅ Estadísticas recibidas:', data);
+          
+          // Guardar leads para la tabla
+          todosLosLeads = data.todosLosLeads || [];
+          leadsFiltrados = [...todosLosLeads];
+          
+          actualizarUIEstadisticas(data);
+          actualizarGraficoEstados(data);
+          actualizarTablaLeads();
+          
+          ocultarLoading();
+        })
+        .withFailureHandler(function(error) {
+          console.error('❌ Error:', error);
+          ocultarLoading();
+          mostrarError('Error al cargar estadísticas');
+        })
+        .getEstadisticasUsuarioConFiltros(usuarioId, filtros);
+    }
+    
+    function cargarEstadisticasGenerales(filtros = {}) {
+      return new Promise((resolve) => {
+        console.log('🌍 Cargando estadísticas generales con filtros:', filtros);
+        
+        google.script.run
+          .withSuccessHandler(function(data) {
+            console.log('✅ Generales:', data);
+            actualizarEstadisticasGenerales(data);
+            resolve(data);
+          })
+          .withFailureHandler(function(error) {
+            console.error('❌ Error generales:', error);
+            resolve(null);
+          })
+          .getEstadisticasGeneralesConFiltros(filtros);
+      });
+    }
+    
+    // ========== ACTUALIZACIÓN UI ==========
+    
+    function actualizarUIEstadisticas(data) {
+      if (!data) return;
+      
+      console.log('🎨 Actualizando UI...', data);
+      
+      const usuario = usuariosCache.find(u => u.id === data.usuarioId);
+      const nombreUsuario = usuario ? usuario.nombre : data.usuarioNombre;
+      
+      document.getElementById('usuarioSeleccionado').textContent = nombreUsuario;
+      document.getElementById('resumenUsuario').textContent = data.resumen || 'Sin datos';
+      document.getElementById('totalLeads').textContent = data.total || 0;
+      
+      // Actualizar TODOS los estados (6 estados principales)
+      const estados = data.estados || {};
+      document.getElementById('contadorNuevos').textContent = estados.NUEVO || 0;
+      document.getElementById('contadorAbiertos').textContent = estados.ABIERTO || 0;
+      document.getElementById('contadorConvertidos').textContent = estados.CONVERTIDO || 0;
+      document.getElementById('contadorActivos').textContent = estados.ACTIVO || 0;
+      document.getElementById('contadorOperando').textContent = estados.OPERANDO || 0;
+      document.getElementById('contadorDescartados').textContent = estados.DESCARTADO || 0;
+      document.getElementById('contadorOtros').textContent = estados.OTROS || 0;
+      
+      // Actualizar barras de progreso
+      const porcentajes = data.porcentajes || {};
+      actualizarBarrasProgreso(porcentajes);
+      
+      document.getElementById('fechaActualizacion').textContent = data.fechaActualizacion || new Date().toLocaleString('es-ES');
+      
+      actualizarGraficoEstados(data);
+    }
+    
+    function actualizarBarrasProgreso(porcentajes) {
+      const estados = ['NUEVO', 'ABIERTO', 'CONVERTIDO', 'ACTIVO', 'OPERANDO', 'DESCARTADO', 'OTROS'];
+      const colores = [
+        '#4285f4', // NUEVO - azul
+        '#34a853', // ABIERTO - verde
+        '#fbbc05', // CONVERTIDO - amarillo
+        '#ea4335', // ACTIVO - rojo
+        '#673ab7', // OPERANDO - púrpura
+        '#9e9e9e', // DESCARTADO - gris
+        '#9aa0a6'  // OTROS - gris claro
+      ];
+      
+      estados.forEach((estado, index) => {
+        const fill = document.getElementById(`progress${estado}`);
+        if (fill) {
+          const porcentaje = porcentajes[estado] || 0;
+          fill.style.width = `${porcentaje}%`;
+          fill.style.backgroundColor = colores[index];
+        }
+      });
+    }
+    
+    function actualizarGraficoEstados(data) {
+      const ctx = document.getElementById('graficoEstados');
+      if (!ctx) return;
+      
+      if (chartInstance) chartInstance.destroy();
+      
+      const estados = ['NUEVO', 'ABIERTO', 'CONVERTIDO', 'ACTIVO', 'OPERANDO', 'DESCARTADO', 'OTROS'];
+      const valores = estados.map(e => (data.estados && data.estados[e]) || 0);
+      const colores = ['#4285f4', '#34a853', '#fbbc05', '#ea4335', '#673ab7', '#9e9e9e', '#9aa0a6'];
+      
+      chartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: estados,
+          datasets: [{
+            data: valores,
+            backgroundColor: colores,
+            borderWidth: 2,
+            borderColor: '#fff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom' },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const label = context.label || '';
+                  const value = context.raw || 0;
+                  const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                  const percent = total > 0 ? Math.round((value / total) * 100) : 0;
+                  return `${label}: ${value} (${percent}%)`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+    
+    function actualizarEstadisticasGenerales(data) {
+      if (!data) return;
+      
+      document.getElementById('totalGeneralLeads').textContent = data.total || 0;
+      document.getElementById('totalUsuarios').textContent = data.usuariosActivos || 0;
+      
+      if (data.estados) {
+        document.getElementById('generalNuevos').textContent = data.estados.NUEVO || 0;
+        document.getElementById('generalAbiertos').textContent = data.estados.ABIERTO || 0;
+        document.getElementById('generalConvertidos').textContent = data.estados.CONVERTIDO || 0;
+        document.getElementById('generalActivos').textContent = data.estados.ACTIVO || 0;
+        document.getElementById('generalOperando').textContent = data.estados.OPERANDO || 0;
+        document.getElementById('generalDescartados').textContent = data.estados.DESCARTADO || 0;
+      }
+    }
+    
+    function limpiarUIUsuario() {
+      document.getElementById('usuarioSeleccionado').textContent = 'Selecciona un asesor';
+      document.getElementById('resumenUsuario').textContent = 'Selecciona un asesor para ver estadísticas';
+      document.getElementById('totalLeads').textContent = '0';
+      
+      // Resetear contadores
+      ['Nuevos', 'Abiertos', 'Convertidos', 'Activos', 'Operando', 'Descartados', 'Otros'].forEach(e => {
+        const el = document.getElementById(`contador${e}`);
+        if (el) el.textContent = '0';
+      });
+      
+      // Resetear barras
+      ['NUEVO', 'ABIERTO', 'CONVERTIDO', 'ACTIVO', 'OPERANDO', 'DESCARTADO', 'OTROS'].forEach(e => {
+        const fill = document.getElementById(`progress${e}`);
+        if (fill) fill.style.width = '0%';
+      });
+      
+      if (chartInstance) {
+        chartInstance.data.datasets[0].data = [0,0,0,0,0,0,0];
+        chartInstance.update();
+      }
+      
+      // Limpiar tabla
+      todosLosLeads = [];
+      leadsFiltrados = [];
+      actualizarTablaLeads();
+    }
+    
+    // ========== FUNCIONES DE TABLA ==========
+    
+    function actualizarTablaLeads() {
+      const tbody = document.getElementById('leadsTableBody');
+      if (!tbody) return;
+      
+      tbody.innerHTML = '';
+      
+      if (!currentUser) {
+        tbody.innerHTML = '<tr><td colspan="4" class="loading">Selecciona un asesor para ver sus leads</td></tr>';
+        ocultarPaginacion();
+        return;
+      }
+      
+      if (leadsFiltrados.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="loading">No se encontraron leads</td></tr>';
+        ocultarPaginacion();
+        return;
+      }
+      
+      // Aplicar paginación
+      let inicio = 0;
+      let fin = leadsFiltrados.length;
+      
+      if (itemsPorPagina > 0) {
+        inicio = (paginaActual - 1) * itemsPorPagina;
+        fin = Math.min(inicio + itemsPorPagina, leadsFiltrados.length);
+      }
+      
+      const leadsPagina = leadsFiltrados.slice(inicio, fin);
+      
+      leadsPagina.forEach(lead => {
+        const row = document.createElement('tr');
+        let estadoClass = 'estado-OTROS';
+        const estadoTexto = lead.estado || 'Sin estado';
+        const estadoClasificado = lead.estadoClasificado || '';
+        
+        if (estadoClasificado === 'NUEVO') estadoClass = 'estado-NUEVO';
+        else if (estadoClasificado === 'ABIERTO') estadoClass = 'estado-ABIERTO';
+        else if (estadoClasificado === 'CONVERTIDO') estadoClass = 'estado-CONVERTIDO';
+        else if (estadoClasificado === 'ACTIVO') estadoClass = 'estado-ACTIVO';
+        else if (estadoClasificado === 'OPERANDO') estadoClass = 'estado-OPERANDO';
+        else if (estadoClasificado === 'DESCARTADO') estadoClass = 'estado-DESCARTADO';
+        
+        row.innerHTML = `
+          <td>${lead.id || 'N/A'}</td>
+          <td>${lead.nombre || 'Sin nombre'}</td>
+          <td>${lead.fecha || 'Sin fecha'}</td>
+          <td><span class="estado-badge ${estadoClass}">${estadoTexto}</span></td>
+        `;
+        tbody.appendChild(row);
+      });
+      
+      actualizarPaginacion();
+    }
+    
+    function actualizarPaginacion() {
+      const total = leadsFiltrados.length;
+      const totalPaginas = itemsPorPagina > 0 ? Math.ceil(total / itemsPorPagina) : 1;
+      
+      if (total === 0) {
+        ocultarPaginacion();
+        return;
+      }
+      
+      document.getElementById('totalItems').textContent = total;
+      document.getElementById('pageInfo').textContent = `Página ${paginaActual} de ${totalPaginas}`;
+      
+      if (itemsPorPagina > 0) {
+        const inicio = (paginaActual - 1) * itemsPorPagina + 1;
+        const fin = Math.min(paginaActual * itemsPorPagina, total);
+        document.getElementById('startItem').textContent = inicio;
+        document.getElementById('endItem').textContent = fin;
+      } else {
+        document.getElementById('startItem').textContent = 1;
+        document.getElementById('endItem').textContent = total;
+      }
+      
+      document.getElementById('firstPageBtn').disabled = paginaActual === 1;
+      document.getElementById('prevPageBtn').disabled = paginaActual === 1;
+      document.getElementById('nextPageBtn').disabled = paginaActual === totalPaginas || total === 0;
+      document.getElementById('lastPageBtn').disabled = paginaActual === totalPaginas || total === 0;
+      
+      document.getElementById('pagination').style.display = 'flex';
+    }
+    
+    function ocultarPaginacion() {
+      document.getElementById('pagination').style.display = 'none';
+    }
+    
+    function cambiarPagina(accion) {
+      const totalPaginas = itemsPorPagina > 0 ? Math.ceil(leadsFiltrados.length / itemsPorPagina) : 1;
+      
+      switch(accion) {
+        case 'primera': paginaActual = 1; break;
+        case 'anterior': paginaActual = Math.max(1, paginaActual - 1); break;
+        case 'siguiente': paginaActual = Math.min(totalPaginas, paginaActual + 1); break;
+        case 'ultima': paginaActual = totalPaginas; break;
+      }
+      
+      actualizarTablaLeads();
+    }
+    
+    function cambiarPageSize() {
+      itemsPorPagina = parseInt(document.getElementById('pageSizeSelect').value) || leadsFiltrados.length;
+      paginaActual = 1;
+      actualizarTablaLeads();
+    }
+    
+    // ========== BÚSQUEDA Y FILTROS ==========
+    
+    function filtrarLeads() {
+      const searchText = document.getElementById('searchInput').value.toLowerCase().trim();
+      const clearBtn = document.querySelector('.clear-search');
+      
+      if (searchText) {
+        clearBtn.style.display = 'inline';
+        leadsFiltrados = todosLosLeads.filter(lead => {
+          return (lead.id && lead.id.toString().toLowerCase().includes(searchText)) ||
+                 (lead.nombre && lead.nombre.toString().toLowerCase().includes(searchText)) ||
+                 (lead.fecha && lead.fecha.toString().toLowerCase().includes(searchText)) ||
+                 (lead.estado && lead.estado.toString().toLowerCase().includes(searchText));
+        });
+      } else {
+        clearBtn.style.display = 'none';
+        leadsFiltrados = [...todosLosLeads];
+      }
+      
+      document.getElementById('resultCount').textContent = `${leadsFiltrados.length} resultados`;
+      paginaActual = 1;
+      ordenarLeads(ordenActual.columna);
+    }
+    
+    function limpiarBusqueda() {
+      document.getElementById('searchInput').value = '';
+      document.querySelector('.clear-search').style.display = 'none';
+      leadsFiltrados = [...todosLosLeads];
+      document.getElementById('resultCount').textContent = '';
+      paginaActual = 1;
+      ordenarLeads(ordenActual.columna);
+    }
+    
+    function ordenarLeads(columna) {
+      if (ordenActual.columna === columna) {
+        ordenActual.direccion = ordenActual.direccion === 'asc' ? 'desc' : 'asc';
+      } else {
+        ordenActual.columna = columna;
+        ordenActual.direccion = 'asc';
+      }
+      
+      leadsFiltrados.sort((a, b) => {
+        let valA = a[columna] || '';
+        let valB = b[columna] || '';
+        
+        if (columna === 'fecha') {
+          valA = new Date(valA);
+          valB = new Date(valB);
+        }
+        
+        if (typeof valA === 'string') valA = valA.toLowerCase();
+        if (typeof valB === 'string') valB = valB.toLowerCase();
+        
+        if (valA < valB) return ordenActual.direccion === 'asc' ? -1 : 1;
+        if (valA > valB) return ordenActual.direccion === 'asc' ? 1 : -1;
+        return 0;
+      });
+      
+      paginaActual = 1;
+      actualizarTablaLeads();
+    }
+    
+    // ========== FUNCIONES DE ACCIÓN ==========
+    
+    async function refreshData() {
+      const btn = document.querySelector('.btn');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="btn-icon">🔄</span> Actualizando...';
+      }
+      
+      try {
+        await cargarAniosDisponibles();
+        await cargarUsuarios();
+        await cargarEstadisticasGenerales(filtrosActuales);
+        
+        if (currentUser) {
+          await cargarEstadisticasUsuario(currentUser, filtrosActuales);
+        }
+        
+        mostrarMensaje('✅ Datos actualizados', 'info');
+      } catch (error) {
+        console.error('❌ Error refresh:', error);
+        mostrarError('Error al actualizar');
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '<span class="btn-icon">🔄</span> Actualizar';
+        }
+      }
+    }
+    
+    function testConexion() {
+      console.log('🔍 Testeando conexión...');
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          console.log('✅ Test OK:', result);
+          alert(`✅ Conexión exitosa!\n${result.length} usuarios encontrados`);
+        })
+        .withFailureHandler(function(error) {
+          console.error('❌ Test error:', error);
+          alert(`❌ Error de conexión:\n${error}`);
+        })
+        .getUsuarios();
+    }
+    
+    function exportarExcel() {
+      if (!currentUser) {
+        mostrarMensaje('Selecciona un asesor primero', 'error');
+        return;
+      }
+      mostrarMensaje('📥 Función en desarrollo', 'info');
+    }
+    
+    // ========== FUNCIONES AUXILIARES ==========
+    
+    function mostrarLoading() {
+      if (document.getElementById('loadingOverlay')) return;
+      
+      const overlay = document.createElement('div');
+      overlay.className = 'loading';
+      overlay.id = 'loadingOverlay';
+      overlay.innerHTML = `
+        <div class="loading-spinner"></div>
+        <p>Cargando...</p>
+      `;
+      document.body.appendChild(overlay);
+    }
+    
+    function ocultarLoading() {
+      const overlay = document.getElementById('loadingOverlay');
+      if (overlay) overlay.remove();
+    }
+    
+    function mostrarMensaje(texto, tipo = 'info') {
+      const div = document.createElement('div');
+      div.className = `alert alert-${tipo}`;
+      div.innerHTML = `<span>${tipo === 'info' ? 'ℹ️' : '⚠️'}</span><span>${texto}</span>`;
+      
+      const container = document.querySelector('.container');
+      if (container) {
+        container.insertBefore(div, container.firstChild);
+        setTimeout(() => div.remove(), 5000);
+      }
+    }
+    
+    function mostrarError(mensaje) {
+      mostrarMensaje(mensaje, 'error');
+      ocultarLoading();
+    }
+    
+    // Exponer funciones globales
+    window.refreshData = refreshData;
+    window.testConexion = testConexion;
+    window.exportarExcel = exportarExcel;
+    window.filtrarLeads = filtrarLeads;
+    window.limpiarBusqueda = limpiarBusqueda;
+    window.ordenarLeads = ordenarLeads;
+    window.cambiarPagina = cambiarPagina;
+    window.cambiarPageSize = cambiarPageSize;
+    window.aplicarFiltros = aplicarFiltros;
+    
+  </script>
+  
+</body>
+</html>
