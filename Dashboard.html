@@ -826,9 +826,15 @@
       <p style="margin-top: 10px;">
         <button onclick="testConexion()" class="btn btn-secondary">🔧 Test</button>
         <button onclick="exportarExcel()" class="btn btn-secondary">📥 Exportar</button>
+        <button onclick="runDiagnostico()" class="btn btn-secondary">🧪 Diagnóstico</button>
       </p>
     </div>
     
+  </div>
+
+  <!-- Zona de diagnóstico (visible cuando se ejecuta) -->
+  <div class="container" style="margin-top:12px;">
+    <div id="diagnosticOutput" style="display:block; background:white; padding:12px; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,0.05); color:#111; min-height:40px;">&nbsp;</div>
   </div>
   
   <script>
@@ -1415,6 +1421,52 @@
         return;
       }
       mostrarMensaje('📥 Función en desarrollo', 'info');
+    }
+
+    // ========== DIAGNÓSTICO (UX) ==========
+    function runDiagnostico() {
+      const out = document.getElementById('diagnosticOutput');
+      if (!out) return;
+      out.innerHTML = '<div style="display:flex;align-items:center;gap:10px;"><div class="loading-spinner" style="width:28px;height:28px;border-width:3px"></div><div>Ejecutando diagnóstico...</div></div>';
+
+      if (!currentUser) {
+        out.textContent = 'Selecciona un asesor antes de ejecutar el diagnóstico.';
+        return;
+      }
+
+      // 1) Última actividad
+      google.script.run
+        .withSuccessHandler(function(ult) {
+          const ultima = ult || 'sin datos';
+
+          // 2) Estadísticas del usuario
+          google.script.run
+            .withSuccessHandler(function(stats) {
+              const statsSummary = stats || {};
+
+              // 3) Leads formateados (muestra)
+              google.script.run
+                .withSuccessHandler(function(leads) {
+                  const sample = Array.isArray(leads) ? leads.slice(0,10) : [];
+                  out.innerHTML = '';
+                  const pre = document.createElement('pre');
+                  pre.style.whiteSpace = 'pre-wrap';
+                  pre.textContent = 'Diagnóstico para: ' + currentUser + '\n\n' +
+                    'Última actividad: ' + ultima + '\n\n' +
+                    'Estadísticas (resumen): ' + JSON.stringify(statsSummary, null, 2) + '\n\n' +
+                    'Leads (muestra ' + sample.length + '):\n' + JSON.stringify(sample, null, 2);
+                  out.appendChild(pre);
+                })
+                .withFailureHandler(function(err){ out.textContent = 'Error obteniendo leads: ' + err; })
+                .getLeadsFormateadosPorUsuario(currentUser);
+
+            })
+            .withFailureHandler(function(err){ out.textContent = 'Error obteniendo estadísticas: ' + err; })
+            .getEstadisticasUsuarioConFiltros(currentUser, {});
+
+        })
+        .withFailureHandler(function(err){ out.textContent = 'Error obteniendo última actividad: ' + err; })
+        .getUltimaActividadAsociado(currentUser);
     }
     
     // ========== FUNCIONES AUXILIARES ==========
