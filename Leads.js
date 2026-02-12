@@ -2,8 +2,8 @@
 // MÓDULO: LEADS
 // ============================================
 
-var Leads = (function() {
-  
+var Leads = (function () {
+
   // ===== CONFIGURACIÓN DE COLUMNAS =====
   const CONFIG = {
     // Columnas principales
@@ -13,12 +13,12 @@ var Leads = (function() {
     COL_NOMBRE: 4,         // Columna E - "Nombre"
     COL_APELLIDO: 5,       // Columna F - "Apellido"
     COL_FECHA: 1,          // Columna B - "Fecha de asignación"
-    
+
     // Columnas adicionales (para futuras métricas)
     COL_CREADO_POR: 30,    // Columna AE - "Creado por"
     COL_ULTIMA_GESTION: 38 // Columna AM - "Ult Coment AC"
   };
-  
+
   // ===== MAPEO DE ESTADOS - VERSIÓN COMPLETA CON 6 ESTADOS =====
   const MAPA_ESTADOS = {
     'NUEVO': ['NUEVO', 'NUEVA'],
@@ -29,26 +29,35 @@ var Leads = (function() {
     'DESCARTADO': ['DESCARTADO', 'DESCARTADA', 'PERDIDO', 'PERDIDA'],
     'OTROS': []
   };
-  
+
   /**
    * Obtiene todos los leads de la hoja 'Leads'
    * @returns {Array} Array de objetos lead
    */
   function getLeads() {
     try {
+      // Intentar leer de caché primero (ScriptMem o PropertiesService para persistencia corta)
+      // Usamos CacheService para mejorar velocidad entre llamadas consecutivas del dashboard
+      const cache = CacheService.getScriptCache();
+      const cached = cache.get('LEADS_CACHE');
+      if (cached) {
+        console.log('✅ Leads.getLeads: Recuperado de caché');
+        return JSON.parse(cached);
+      }
+
       const ss = SpreadsheetApp.getActiveSpreadsheet();
       const sheet = ss.getSheetByName('Leads');
-      
+
       if (!sheet) throw new Error('No se encontró la hoja "Leads"');
-      
+
       const lastRow = sheet.getLastRow();
       const lastColumn = sheet.getLastColumn();
-      
+
       if (lastRow < 2) return [];
-      
+
       const data = sheet.getRange(2, 1, lastRow - 1, lastColumn).getValues();
-      
-      const leads = data.map(row => ({
+
+      const leads = data.map((row, index) => ({
         // Datos básicos
         idUsuario: row[CONFIG.COL_ID_USUARIO] ? row[CONFIG.COL_ID_USUARIO].toString().trim() : '',
         estado: row[CONFIG.COL_ESTADO] ? row[CONFIG.COL_ESTADO].toString().trim() : '',
@@ -56,25 +65,32 @@ var Leads = (function() {
         nombre: row[CONFIG.COL_NOMBRE] || '',
         apellido: row[CONFIG.COL_APELLIDO] || '',
         fecha: row[CONFIG.COL_FECHA],
-        
+
         // Datos adicionales
         creadoPor: row[CONFIG.COL_CREADO_POR] ? row[CONFIG.COL_CREADO_POR].toString().trim() : '',
         ultimaGestion: row[CONFIG.COL_ULTIMA_GESTION] || null,
-        
-        // Fila original para acceso futuro
-        _filaOriginal: row,
-        _filaNumero: data.indexOf(row) + 2
+
+        // Fila original para acceso futuro (reducimos data para cache)
+        _filaNumero: index + 2
       }));
-      
-      console.log(`✅ Leads.getLeads: ${leads.length} leads obtenidos`);
+
+      console.log(`✅ Leads.getLeads: ${leads.length} leads obtenidos (origen)`);
+
+      // Guardar en caché (try-catch por si excede 100KB)
+      try {
+        cache.put('LEADS_CACHE', JSON.stringify(leads), 300); // 5 minutos
+      } catch (e) {
+        console.warn('⚠️ Cache leads fulled:', e);
+      }
+
       return leads;
-      
+
     } catch (error) {
       console.error('❌ Error en Leads.getLeads:', error);
       throw error;
     }
   }
-  
+
   /**
    * Obtiene leads filtrados por usuario
    * @param {string} usuarioId - Email del usuario
@@ -83,15 +99,29 @@ var Leads = (function() {
   function getLeadsPorUsuario(usuarioId) {
     const todosLosLeads = getLeads();
     const usuarioIdStr = usuarioId.toString().trim().toLowerCase();
-    
-    const leadsFiltrados = todosLosLeads.filter(lead => 
-      lead.idUsuario && lead.idUsuario.toLowerCase() === usuarioIdStr
-    );
-    
-    console.log(`✅ Leads.getLeadsPorUsuario: ${leadsFiltrados.length} leads para ${usuarioId}`);
+
+    // Obtener nombre del usuario para búsqueda flexible (por si en la hoja Leads pusieron el Nombre en vez del Mail)
+    let usuarioNombreStr = "";
+    try {
+      const usuario = Usuarios.getUsuarioPorId(usuarioId);
+      if (usuario && usuario.nombre) {
+        usuarioNombreStr = usuario.nombre.toString().trim().toLowerCase();
+      }
+    } catch (e) {
+      console.warn('Leads.getLeadsPorUsuario: No se pudo obtener nombre para fallback match', e);
+    }
+
+    const leadsFiltrados = todosLosLeads.filter(lead => {
+      if (!lead.idUsuario) return false;
+      const val = lead.idUsuario.toString().trim().toLowerCase();
+      // Match por ID (Mail) O por Nombre
+      return val === usuarioIdStr || (usuarioNombreStr && val === usuarioNombreStr);
+    });
+
+    console.log(`✅ Leads.getLeadsPorUsuario: ${leadsFiltrados.length} leads para ${usuarioId} (Matching: ID=${usuarioIdStr}, Nombre=${usuarioNombreStr})`);
     return leadsFiltrados;
   }
-  
+
   /**
    * Clasifica un estado según el mapeo (VERSIÓN ACTUALIZADA CON 6 ESTADOS)
    * @param {string} estadoRaw - Estado original
@@ -99,9 +129,9 @@ var Leads = (function() {
    */
   function clasificarEstado(estadoRaw) {
     if (!estadoRaw) return 'OTROS';
-    
+
     const estado = estadoRaw.toString().trim().toUpperCase();
-    
+
     for (const [categoria, palabras] of Object.entries(MAPA_ESTADOS)) {
       for (const palabra of palabras) {
         if (estado.includes(palabra)) {
@@ -109,10 +139,10 @@ var Leads = (function() {
         }
       }
     }
-    
+
     return 'OTROS';
   }
-  
+
   /**
    * Formatea un lead para el frontend
    * @param {Object} lead - Objeto lead
@@ -130,7 +160,7 @@ var Leads = (function() {
       // Si se requiere, se puede calcular diasDesdeUltimaGestion aparte
     };
   }
-  
+
   /**
    * Formatea múltiples leads
    * @param {Array} leads - Array de leads
@@ -143,7 +173,7 @@ var Leads = (function() {
     if (arguments.length > 1) indexMap = arguments[1];
     return leads.map(lead => formatearLead(lead, indexMap));
   }
-  
+
   /**
    * Obtiene leads formateados por usuario
    * @param {string} usuarioId - Email del usuario
@@ -161,7 +191,7 @@ var Leads = (function() {
       return fechaB - fechaA;
     });
   }
-  
+
   /**
    * Obtiene estadísticas de estados para un conjunto de leads (VERSIÓN ACTUALIZADA)
    * @param {Array} leads - Array de leads
@@ -177,12 +207,12 @@ var Leads = (function() {
       'DESCARTADO': 0,
       'OTROS': 0
     };
-    
+
     const otrosDetalles = {};
-    
+
     leads.forEach(lead => {
       const estadoClasificado = clasificarEstado(lead.estado);
-      
+
       if (conteo.hasOwnProperty(estadoClasificado)) {
         conteo[estadoClasificado]++;
       } else {
@@ -190,10 +220,10 @@ var Leads = (function() {
         otrosDetalles[lead.estado] = (otrosDetalles[lead.estado] || 0) + 1;
       }
     });
-    
+
     return { conteo, otrosDetalles };
   }
-  
+
   /**
    * Calcula porcentajes de estados
    * @param {Object} conteo - Objeto con conteos
@@ -207,7 +237,7 @@ var Leads = (function() {
     });
     return porcentajes;
   }
-  
+
   // API Pública
   return {
     CONFIG: CONFIG,
@@ -221,7 +251,7 @@ var Leads = (function() {
     contarEstados: contarEstados,
     calcularPorcentajes: calcularPorcentajes
   };
-  
+
 })();
 
 // ================================
@@ -302,7 +332,7 @@ function getUltimaActividadPorLead(leadId) {
     var candidateSheets = ['Comentarios', 'Agenda', 'Tareas', 'Viajes'];
     var maxDate = null;
 
-    candidateSheets.forEach(function(sheetName) {
+    candidateSheets.forEach(function (sheetName) {
       var sheet = ss.getSheetByName(sheetName);
       if (!sheet) return;
       try {

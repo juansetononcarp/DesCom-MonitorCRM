@@ -2,8 +2,8 @@
 // MÓDULO: USUARIOS
 // ============================================
 
-var Usuarios = (function() {
-  
+var Usuarios = (function () {
+
   /**
    * Obtiene todos los usuarios de la hoja 'Usuarios'
    * @returns {Array} Array de objetos {id, nombre}
@@ -12,16 +12,16 @@ var Usuarios = (function() {
     try {
       const ss = SpreadsheetApp.getActiveSpreadsheet();
       const sheet = ss.getSheetByName('Usuarios');
-      
+
       if (!sheet) throw new Error('No se encontró la hoja "Usuarios"');
-      
+
       const lastRow = sheet.getLastRow();
       if (lastRow < 2) return [];
-      
+
       // Obtener Mail (Col A) y Nombre (Col B)
       const dataRange = sheet.getRange(2, 1, lastRow - 1, 2);
       const data = dataRange.getValues();
-      
+
       const usuarios = data
         .filter(row => row[1] && row[1].toString().trim() !== '')
         .map(row => ({
@@ -29,16 +29,16 @@ var Usuarios = (function() {
           nombre: row[1].toString().trim()
         }))
         .filter(usuario => usuario.id && usuario.nombre);
-      
+
       console.log(`✅ Usuarios.getUsuarios: ${usuarios.length} usuarios`);
       return usuarios;
-      
+
     } catch (error) {
       console.error('❌ Error en Usuarios.getUsuarios:', error);
       throw error;
     }
   }
-  
+
   /**
    * Obtiene el nombre de un usuario por su ID
    * @param {string} usuarioId - Email del usuario
@@ -54,7 +54,7 @@ var Usuarios = (function() {
       return `Usuario ${usuarioId}`;
     }
   }
-  
+
   /**
    * Obtiene un usuario por su ID
    * @param {string} usuarioId - Email del usuario
@@ -69,7 +69,7 @@ var Usuarios = (function() {
       return null;
     }
   }
-  
+
   /**
    * Obtiene estadísticas básicas de usuarios
    * @returns {Object} Estadísticas de usuarios
@@ -87,7 +87,7 @@ var Usuarios = (function() {
       return { total: 0, activos: 0, lista: [] };
     }
   }
-  
+
   // API Pública
   return {
     getUsuarios: getUsuarios,
@@ -95,7 +95,7 @@ var Usuarios = (function() {
     getUsuarioPorId: getUsuarioPorId,
     getEstadisticas: getEstadisticas
   };
-  
+
 })();
 
 // ================================
@@ -107,70 +107,63 @@ var Usuarios = (function() {
  * Revisa `Leads` (columna `COL_ULTIMA_GESTION`) y las hojas: `Comentarios`, `Agenda`, `Tareas`.
  * Devuelve una fecha (Date) o null.
  */
+/**
+ * Busca la última fecha de actividad asociada a un `usuarioId`.
+ * PRIORIZA lectura de índice `Ultima_Actividad` para velocidad.
+ * Luego revisa `Leads` (columna `COL_ULTIMA_GESTION`) como fallback rápido.
+ * Devuelve una fecha formateada (string) o null.
+ */
 function getUltimaActividadAsociado(usuarioId) {
   try {
     if (!usuarioId) return null;
     var usuarioIdStr = usuarioId.toString().trim().toLowerCase();
-
     var maxDate = null;
 
-    // 1) Revisar Leads (usa la función existente para obtener leads por usuario)
+    // 1) Consultar índice pre-calculado (RÁPIDO)
+    var indexMap = {};
     try {
-      var leads = Leads.getLeadsPorUsuario(usuarioId);
-      leads.forEach(function(lead) {
-        if (lead && lead.ultimaGestion) {
-          var d = parsePossiblySheetDate(lead.ultimaGestion);
-          if (d && (!maxDate || d.getTime() > maxDate.getTime())) maxDate = d;
-        }
-      });
+      // Intentar leer de caché o sheet
+      indexMap = getUltimaActividadMap() || {};
     } catch (e) {
-      console.warn('Advertencia: no se pudo leer leads para última actividad:', e && e.toString());
+      console.warn('No se pudo leer índice de actividad:', e);
     }
 
-    // 2) Otras hojas que pueden contener actividades
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var candidateSheets = ['Comentarios', 'Agenda', 'Tareas', 'Viajes'];
+    // Buscar en el mapa si hay alguna entrada para este usuario (aunque el mapa es por LeadID, 
+    // tendríamos que recorrerlo o tener un mapa por Usuario. 
+    // Como el mapa actual es por LeadID, la estrategia más rápida es iterar
+    // las leads del usuario y buscar su última actividad en el mapa).
 
-    candidateSheets.forEach(function(sheetName) {
-      var sheet = ss.getSheetByName(sheetName);
-      if (!sheet) return;
+    var leadsUsuario = [];
+    try {
+      leadsUsuario = Leads.getLeadsPorUsuario(usuarioId) || [];
+    } catch (e) {
+      console.warn('Error obteniendo leads para actividad:', e);
+    }
 
-      try {
-        var last = scanSheetForUserDates(sheet, usuarioIdStr);
-        if (last && (!maxDate || last.getTime() > maxDate.getTime())) maxDate = last;
-      } catch (e) {
-        console.warn('Error escaneando hoja ' + sheetName + ': ' + (e && e.toString()));
+    leadsUsuario.forEach(function (lead) {
+      // a) Revisar columna 'Ultima Gestion' del propio lead (dato desnormalizado)
+      if (lead.ultimaGestion) {
+        var d = parsePossiblySheetDate(lead.ultimaGestion);
+        if (d && (!maxDate || d.getTime() > maxDate.getTime())) maxDate = d;
+      }
+
+      // b) Revisar índice por LeadId
+      if (lead.leadId && indexMap[lead.leadId]) {
+        var info = indexMap[lead.leadId];
+        if (info.ultimaISO) {
+          var d = new Date(info.ultimaISO);
+          if (!isNaN(d.getTime()) && (!maxDate || d.getTime() > maxDate.getTime())) maxDate = d;
+        }
       }
     });
 
-    // 3) Además, escanear por LeadID en hojas de actividad (por si la acción la hizo otro actor)
-    try {
-      var leadIds = [];
-      try {
-        var usuarioLeads = Leads.getLeadsPorUsuario(usuarioId) || [];
-        leadIds = usuarioLeads.map(function(l) { return (l.leadId !== undefined && l.leadId !== null) ? l.leadId.toString().toLowerCase() : ''; }).filter(Boolean);
-      } catch (e) {
-        console.warn('No se pudieron obtener leadIds del usuario:', e && e.toString());
-      }
+    // 2) (OPCIONAL) Escaneo profundo en tiempo real
+    // Desactivado por defecto para velocidad (lo hace el trigger buildUltimaActividadIndex)
+    // Solo si no se encontró nada, podríamos hacer un escaneo rápido en 'Comentarios' 
+    // PERO esto causa timeouts. Mejor confiar en el índice.
 
-      if (leadIds.length > 0) {
-        candidateSheets.forEach(function(sheetName) {
-          var sheet = ss.getSheetByName(sheetName);
-          if (!sheet) return;
-          try {
-            var lastByLead = scanSheetForUserOrLeadDates(sheet, usuarioIdStr, leadIds);
-            if (lastByLead && (!maxDate || lastByLead.getTime() > maxDate.getTime())) maxDate = lastByLead;
-          } catch (e) {
-            console.warn('Error escaneando por lead en hoja ' + sheetName + ': ' + (e && e.toString()));
-          }
-        });
-      }
-    } catch (e) {
-      // ignore
-    }
-
-    // Formatear resultado usando Fechas.formatear si existe
-    if (maxDate) return Fechas && Fechas.formatear ? Fechas.formatear(maxDate) : maxDate.toString();
+    // Formatear resultado
+    if (maxDate) return Fechas && Fechas.formatear ? Fechas.formatear(maxDate) : maxDate.toLocaleString();
     return null;
   } catch (error) {
     console.error('❌ Error en getUltimaActividadAsociado:', error);
@@ -306,12 +299,12 @@ function scanSheetForUserOrLeadDates(sheet, usuarioIdStr, leadIds) {
       'Comentarios': 6
     };
     if (sheetActorCols[sheetName] !== undefined) userCol = sheetActorCols[sheetName];
-  } catch (e) {}
+  } catch (e) { }
 
   var data = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
   var maxDate = null;
 
-  var leadSet = new Set((leadIds || []).map(function(x){return x.toString().toLowerCase();}));
+  var leadSet = new Set((leadIds || []).map(function (x) { return x.toString().toLowerCase(); }));
 
   for (var r = 0; r < data.length; r++) {
     var row = data[r];
@@ -357,6 +350,10 @@ function scanSheetForUserOrLeadDates(sheet, usuarioIdStr, leadIds) {
  * Diagnóstico rápido: devuelve estadísticas resumidas sin escanear hojas completas.
  * Escanea como máximo `maxRows` por hoja y limita columnas para ser rápido.
  */
+/**
+ * Diagnóstico rápido: devuelve estadísticas resumidas y VERIFICACIÓN DE COLUMNAS.
+ * Escanea como máximo `maxRows` por hoja y limita columnas para ser rápido.
+ */
 function getDiagnosticoRapido(usuarioId, maxRows) {
   try {
     maxRows = typeof maxRows === 'number' ? maxRows : 1000;
@@ -365,23 +362,63 @@ function getDiagnosticoRapido(usuarioId, maxRows) {
       usuario: usuarioId,
       tiempoInicio: new Date().toISOString(),
       leadsCount: 0,
+      leadsSheetInfo: {},
       sampleLeadIds: [],
       sheets: [],
       tiempoMs: 0
     };
 
-    // Obtener leads del usuario (rápido)
+    // 1. Diagnóstico de Hoja Leads (Columnas)
+    try {
+      var ss = SpreadsheetApp.getActiveSpreadsheet();
+      var sheetLeads = ss.getSheetByName('Leads');
+      if (sheetLeads) {
+        var headers = sheetLeads.getRange(1, 1, 1, Math.min(sheetLeads.getLastColumn(), 50)).getValues()[0];
+        // Verificar columnas clave
+        // Leads.CONFIG.COL_ID_USUARIO is 2 (3rd col)
+        // Leads.CONFIG.COL_ESTADO is 37 (38th col)
+
+        var colUsuarioVal = headers.length > 2 ? headers[2] : 'N/A';
+        var colEstadoVal = headers.length > 37 ? headers[37] : 'N/A';
+
+        // Muestra de datos
+        var sampleData = [];
+        if (sheetLeads.getLastRow() > 1) {
+          sampleData = sheetLeads.getRange(2, 1, Math.min(5, sheetLeads.getLastRow() - 1), 40).getValues().map(function (r) {
+            return {
+              col_C_Usuario: r[2],
+              col_AL_Estado: r[37],
+              col_E_Nombre: r[4]
+            };
+          });
+        }
+
+        result.leadsSheetInfo = {
+          exists: true,
+          headersCount: headers.length,
+          header_Col_C: colUsuarioVal,
+          header_Col_AL: colEstadoVal,
+          sampleRows: sampleData
+        };
+      } else {
+        result.leadsSheetInfo = { exists: false };
+      }
+    } catch (e) {
+      result.leadsSheetInfo = { error: e.toString() };
+    }
+
+    // Obtener leads del usuario (usando lógica actual)
     var usuarioLeads = [];
     try { usuarioLeads = Leads.getLeadsPorUsuario(usuarioId) || []; } catch (e) { usuarioLeads = []; }
     result.leadsCount = usuarioLeads.length;
-    result.sampleLeadIds = usuarioLeads.slice(0, 10).map(function(l){ return l.leadId !== undefined && l.leadId !== null ? l.leadId.toString() : ''; });
+    result.sampleLeadIds = usuarioLeads.slice(0, 5).map(function (l) { return l.leadId; });
 
-    var leadIds = result.sampleLeadIds.map(function(x){ return x.toString().toLowerCase(); });
+    var leadIds = result.sampleLeadIds.map(function (x) { return x ? x.toString().toLowerCase() : ''; }).filter(Boolean);
 
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var candidateSheets = ['Comentarios','Agenda','Tareas','Viajes'];
+    // Escanear otras hojas (limitado)
+    var candidateSheets = ['Comentarios', 'Agenda', 'Tareas', 'Viajes'];
 
-    candidateSheets.forEach(function(sheetName) {
+    candidateSheets.forEach(function (sheetName) {
       var sheet = ss.getSheetByName(sheetName);
       if (!sheet) {
         result.sheets.push({ name: sheetName, exists: false });
@@ -409,8 +446,8 @@ function getDiagnosticoRapido(usuarioId, maxRows) {
             var cellUser = row[actorCol] ? row[actorCol].toString().trim().toLowerCase() : '';
             if (cellUser && cellUser.indexOf((usuarioId || '').toString().toLowerCase()) !== -1) stats.actorMatches++;
           }
-          // lead match (buscar en primeras columnas por muestra)
-          if (leadSet.size > 0) {
+          // lead match
+          if (leadSet.size > 0 && row.length > 0) {
             for (var c = 0; c < Math.min(row.length, 8); c++) {
               if (!row[c]) continue;
               var text = row[c].toString().toLowerCase();
@@ -445,9 +482,9 @@ function buildUltimaActividadIndex() {
     // Mapa temporal
     var index = {};
 
-    var candidateSheets = ['Comentarios','Agenda','Tareas','Viajes','Leads'];
+    var candidateSheets = ['Comentarios', 'Agenda', 'Tareas', 'Viajes', 'Leads'];
 
-    candidateSheets.forEach(function(sName) {
+    candidateSheets.forEach(function (sName) {
       var sheet = ss.getSheetByName(sName);
       if (!sheet) return;
 
@@ -455,32 +492,32 @@ function buildUltimaActividadIndex() {
       var lastCol = sheet.getLastColumn();
       if (lastRow < 2) return;
 
-      var headers = sheet.getRange(1,1,1,lastCol).getValues()[0] || [];
+      var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0] || [];
       // buscar columna leadId
       var leadCol = -1;
-      for (var c=0;c<headers.length;c++){
+      for (var c = 0; c < headers.length; c++) {
         var h = headers[c] ? headers[c].toString().toLowerCase() : '';
         if (/lead\s*id|leadid|lead|id\b/.test(h)) { leadCol = c; break; }
       }
       // buscar columna fecha
       var dateCol = -1;
-      for (var c=0;c<headers.length;c++){
+      for (var c = 0; c < headers.length; c++) {
         var h = headers[c] ? headers[c].toString().toLowerCase() : '';
         if (/(fecha|date|created|timestamp|hora|time|datetime|creado)/.test(h)) { dateCol = c; break; }
       }
       // actor col heurística
-      var actorCols = { 'Tareas':8, 'Agenda':8, 'Comentarios':6 };
+      var actorCols = { 'Tareas': 8, 'Agenda': 8, 'Comentarios': 6 };
       var actorCol = actorCols[sName] !== undefined ? actorCols[sName] : -1;
 
-      var data = sheet.getRange(2,1,lastRow-1,lastCol).getValues();
+      var data = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
 
-      for (var r=0;r<data.length;r++){
+      for (var r = 0; r < data.length; r++) {
         var row = data[r];
         var leadVal = null;
-        if (leadCol >=0 && leadCol < row.length) leadVal = row[leadCol];
+        if (leadCol >= 0 && leadCol < row.length) leadVal = row[leadCol];
         if (!leadVal) {
           // intentar detectar en fila
-          for (var c=0;c<Math.min(row.length,10);c++){
+          for (var c = 0; c < Math.min(row.length, 10); c++) {
             if (row[c] && row[c].toString().match(/[A-Za-z0-9\-]{2,}/)) { leadVal = row[c]; break; }
           }
         }
@@ -488,10 +525,10 @@ function buildUltimaActividadIndex() {
         var leadId = leadVal.toString().trim();
 
         var dateVal = null;
-        if (dateCol >=0 && dateCol < row.length) dateVal = row[dateCol];
+        if (dateCol >= 0 && dateCol < row.length) dateVal = row[dateCol];
         // fallback: buscar cualquier fecha en la fila
         if (!dateVal) {
-          for (var c=0;c<row.length;c++){
+          for (var c = 0; c < row.length; c++) {
             var d = parsePossiblySheetDate(row[c]);
             if (d) { dateVal = d; break; }
           }
@@ -499,11 +536,11 @@ function buildUltimaActividadIndex() {
         var parsed = parsePossiblySheetDate(dateVal);
         if (!parsed) continue;
 
-        var actor = (actorCol>=0 && actorCol<row.length && row[actorCol]) ? row[actorCol].toString() : '';
+        var actor = (actorCol >= 0 && actorCol < row.length && row[actorCol]) ? row[actorCol].toString() : '';
 
         var existing = index[leadId];
         if (!existing || parsed.getTime() > new Date(existing.ultimaISO).getTime()) {
-          index[leadId] = { ultimaISO: parsed.toISOString(), origen: sName, actor: actor, fila: r+2 };
+          index[leadId] = { ultimaISO: parsed.toISOString(), origen: sName, actor: actor, fila: r + 2 };
         }
       }
     });
@@ -512,13 +549,13 @@ function buildUltimaActividadIndex() {
     var outSheet = ss.getSheetByName(sheetName);
     if (!outSheet) outSheet = ss.insertSheet(sheetName);
     outSheet.clear();
-    var rows = [['LeadID','ultimaISO','origen','actor','fila']];
-    Object.keys(index).forEach(function(k){ rows.push([k, index[k].ultimaISO, index[k].origen, index[k].actor, index[k].fila]); });
-    if (rows.length>0) outSheet.getRange(1,1,rows.length,rows[0].length).setValues(rows);
+    var rows = [['LeadID', 'ultimaISO', 'origen', 'actor', 'fila']];
+    Object.keys(index).forEach(function (k) { rows.push([k, index[k].ultimaISO, index[k].origen, index[k].actor, index[k].fila]); });
+    if (rows.length > 0) outSheet.getRange(1, 1, rows.length, rows[0].length).setValues(rows);
 
-    return { success:true, total: Object.keys(index).length, tiempoMs: new Date().getTime()-start };
+    return { success: true, total: Object.keys(index).length, tiempoMs: new Date().getTime() - start };
   } catch (e) {
-    return { success:false, error: e && e.toString() };
+    return { success: false, error: e && e.toString() };
   }
 }
 
@@ -532,12 +569,12 @@ function getUltimaActividadMap() {
     if (!sheet) return {};
     var lastRow = sheet.getLastRow();
     if (lastRow < 2) return {};
-    var data = sheet.getRange(2,1,lastRow-1,5).getValues();
+    var data = sheet.getRange(2, 1, lastRow - 1, 5).getValues();
     var map = {};
-    data.forEach(function(row){
+    data.forEach(function (row) {
       var k = row[0] ? row[0].toString() : '';
       if (!k) return;
-      map[k.toString()] = { ultimaISO: row[1]||null, origen: row[2]||null, actor: row[3]||null, fila: row[4]||null };
+      map[k.toString()] = { ultimaISO: row[1] || null, origen: row[2] || null, actor: row[3] || null, fila: row[4] || null };
     });
     return map;
   } catch (e) { return {}; }
