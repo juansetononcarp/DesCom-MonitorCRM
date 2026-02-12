@@ -120,50 +120,14 @@ var Leads = (function() {
    */
   function formatearLead(lead, indexMap) {
     const nombreCompleto = `${lead.nombre || ''} ${lead.apellido || ''}`.trim() || 'Sin nombre';
-    // Calcular última actividad específica por lead
-    var ultimaActividad = null;
-    try {
-      // 1) preferir valor de la propia fila
-      if (lead && lead.ultimaGestion) {
-        ultimaActividad = parsePossiblySheetDate(lead.ultimaGestion);
-      }
-
-      // 2) intentar obtener desde índice precomputado si está disponible
-      if (!ultimaActividad && indexMap) {
-        var key = lead.leadId !== undefined && lead.leadId !== null ? lead.leadId.toString() : '';
-        if (key && indexMap[key]) {
-          ultimaActividad = parsePossiblySheetDate(indexMap[key].ultimaISO);
-        }
-      }
-
-      // 3) fallback: escaneo directo (lento)
-      if (!ultimaActividad) {
-        var fromScan = getUltimaActividadPorLead(lead.leadId);
-        if (fromScan) ultimaActividad = fromScan;
-      }
-    } catch (e) {
-      ultimaActividad = null;
-    }
-
-    var diasDesde = null;
-    if (ultimaActividad instanceof Date && !isNaN(ultimaActividad.getTime())) {
-      var hoy = new Date();
-      // normalizar horas para contar días completos
-      var diffMs = hoy.getTime() - ultimaActividad.getTime();
-      diasDesde = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    }
-
     return {
       id: lead.leadId !== undefined && lead.leadId !== null ? lead.leadId.toString() : 'N/A',
       nombre: nombreCompleto,
       fecha: Fechas.formatear(lead.fecha),
       estado: lead.estado || 'Sin estado',
       estadoClasificado: clasificarEstado(lead.estado),
-
-      // Datos adicionales
-      creadoPor: lead.creadoPor || null,
-      ultimaGestion: ultimaActividad || null,
-      diasDesdeUltimaGestion: diasDesde
+      creadoPor: lead.creadoPor || null
+      // Si se requiere, se puede calcular diasDesdeUltimaGestion aparte
     };
   }
   
