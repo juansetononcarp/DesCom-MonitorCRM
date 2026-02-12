@@ -983,7 +983,16 @@
                 limpiarUIUsuario();
               }
             };
-            
+
+            // Selección automática del primer usuario válido
+            if (usuarios.length > 0) {
+              const primerUsuario = usuarios[0].id;
+              select.value = primerUsuario;
+              currentUser = primerUsuario;
+              filtrosActuales.usuarioId = primerUsuario;
+              cargarEstadisticasUsuario(primerUsuario, filtrosActuales);
+            }
+
             resolve(usuarios);
           })
           .withFailureHandler(function(error) {
