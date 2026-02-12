@@ -198,6 +198,21 @@ function scanSheetForUserDates(sheet, usuarioIdStr) {
     if (dateCol === -1 && dateRegex.test(h)) dateCol = c;
   }
 
+  // Priorizar columnas conocidas para actor según el nombre de la hoja
+  try {
+    var sheetName = sheet.getName();
+    var sheetActorCols = {
+      'Tareas': 8,   // columna I -> índice 8
+      'Agenda': 8,   // columna I -> índice 8
+      'Comentarios': 6 // columna G -> índice 6
+    };
+    if (sheetActorCols[sheetName] !== undefined) {
+      userCol = sheetActorCols[sheetName];
+    }
+  } catch (e) {
+    // ignore
+  }
+
   // Leer datos (desde fila 2)
   var data = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
   var maxDate = null;

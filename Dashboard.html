@@ -966,6 +966,7 @@
             
             select.onchange = function() {
               const userId = this.value;
+              console.log('selectUsuario onchange -> value:', userId);
               if (userId) {
                 currentUser = userId;
                 filtrosActuales.usuarioId = userId;
