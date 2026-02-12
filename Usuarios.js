@@ -97,3 +97,139 @@ var Usuarios = (function() {
   };
   
 })();
+
+// ================================
+// Extensiones: Última actividad
+// ================================
+
+/**
+ * Busca la última fecha de actividad asociada a un `usuarioId` en hojas relevantes.
+ * Revisa `Leads` (columna `COL_ULTIMA_GESTION`) y las hojas: `Comentarios`, `Agenda`, `Tareas`.
+ * Devuelve una fecha (Date) o null.
+ */
+function getUltimaActividadAsociado(usuarioId) {
+  try {
+    if (!usuarioId) return null;
+    var usuarioIdStr = usuarioId.toString().trim().toLowerCase();
+
+    var maxDate = null;
+
+    // 1) Revisar Leads (usa la función existente para obtener leads por usuario)
+    try {
+      var leads = Leads.getLeadsPorUsuario(usuarioId);
+      leads.forEach(function(lead) {
+        if (lead && lead.ultimaGestion) {
+          var d = parsePossiblySheetDate(lead.ultimaGestion);
+          if (d && (!maxDate || d.getTime() > maxDate.getTime())) maxDate = d;
+        }
+      });
+    } catch (e) {
+      console.warn('Advertencia: no se pudo leer leads para última actividad:', e && e.toString());
+    }
+
+    // 2) Otras hojas que pueden contener actividades
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var candidateSheets = ['Comentarios', 'Agenda', 'Tareas', 'Viajes'];
+
+    candidateSheets.forEach(function(sheetName) {
+      var sheet = ss.getSheetByName(sheetName);
+      if (!sheet) return;
+
+      try {
+        var last = scanSheetForUserDates(sheet, usuarioIdStr);
+        if (last && (!maxDate || last.getTime() > maxDate.getTime())) maxDate = last;
+      } catch (e) {
+        console.warn('Error escaneando hoja ' + sheetName + ': ' + (e && e.toString()));
+      }
+    });
+
+    // Formatear resultado usando Fechas.formatear si existe
+    if (maxDate) return Fechas && Fechas.formatear ? Fechas.formatear(maxDate) : maxDate.toString();
+    return null;
+  } catch (error) {
+    console.error('❌ Error en getUltimaActividadAsociado:', error);
+    return null;
+  }
+}
+
+/**
+ * Intenta convertir distintos formatos de fecha (Date, número de Sheets, string) a Date.
+ */
+function parsePossiblySheetDate(value) {
+  try {
+    if (!value && value !== 0) return null;
+    if (value instanceof Date) return value;
+    if (typeof value === 'number') {
+      // Número típico de Google Sheets (días desde 1899-12-30 / 1900)
+      if (value > 25000) {
+        return new Date((value - 25569) * 86400 * 1000);
+      }
+      return null;
+    }
+    // Intentar parsear string
+    var parsed = new Date(value);
+    if (!isNaN(parsed.getTime())) return parsed;
+    return null;
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * Escanea una hoja buscando filas asociadas a `usuarioIdStr` y devuelve la última fecha encontrada (Date) o null.
+ * Usa heurísticas sobre encabezados para encontrar columnas de usuario y fecha.
+ */
+function scanSheetForUserDates(sheet, usuarioIdStr) {
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  if (lastRow < 2 || lastCol < 1) return null;
+
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0] || [];
+
+  // Buscar columna usuario y columna fecha por encabezado
+  var userCol = -1;
+  var dateCol = -1;
+  var userRegex = /(asesor|ac asignado|ac|asociad|usuario|mail|email|responsable|creado por)/i;
+  var dateRegex = /(fecha|date|created|timestamp|hora|time|datetime|creado)/i;
+
+  for (var c = 0; c < headers.length; c++) {
+    var h = headers[c] ? headers[c].toString() : '';
+    if (userCol === -1 && userRegex.test(h)) userCol = c;
+    if (dateCol === -1 && dateRegex.test(h)) dateCol = c;
+  }
+
+  // Leer datos (desde fila 2)
+  var data = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+  var maxDate = null;
+
+  for (var r = 0; r < data.length; r++) {
+    var row = data[r];
+
+    // Si se encontraron columnas por encabezado
+    if (userCol >= 0 && dateCol >= 0) {
+      var cellUser = row[userCol] ? row[userCol].toString().trim().toLowerCase() : '';
+      if (cellUser && (cellUser === usuarioIdStr || cellUser.indexOf(usuarioIdStr) !== -1)) {
+        var d = parsePossiblySheetDate(row[dateCol]);
+        if (d && (!maxDate || d.getTime() > maxDate.getTime())) maxDate = d;
+      }
+      continue;
+    }
+
+    // Si no hay encabezados detectados, hacer heurística: buscar usuario en cualquier columna
+    var foundUser = false;
+    for (var cc = 0; cc < row.length; cc++) {
+      if (row[cc] && row[cc].toString().toLowerCase().indexOf(usuarioIdStr) !== -1) {
+        foundUser = true; break;
+      }
+    }
+    if (foundUser) {
+      // intentar encontrar alguna celda en la fila que parezca fecha
+      for (var dd = 0; dd < row.length; dd++) {
+        var candidate = parsePossiblySheetDate(row[dd]);
+        if (candidate && (!maxDate || candidate.getTime() > maxDate.getTime())) maxDate = candidate;
+      }
+    }
+  }
+
+  return maxDate;
+}

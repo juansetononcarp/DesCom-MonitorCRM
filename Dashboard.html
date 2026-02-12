@@ -550,7 +550,10 @@
     <div class="header">
         <div class="logo">
         <div class="card-icon">📊</div>
-        <h1>Nuevo Monitor de CRM</h1>
+        <div>
+          <h1>Nuevo Monitor de CRM</h1>
+          <div id="ultimaActividadDisplay" style="font-size:13px; color:#666; margin-top:4px;">&nbsp;</div>
+        </div>
       </div>
       
       <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end;">
@@ -1010,6 +1013,22 @@
           mostrarError('Error al cargar estadísticas');
         })
         .getEstadisticasUsuarioConFiltros(usuarioId, filtros);
+
+      // Obtener y mostrar última actividad del asesor
+      google.script.run
+        .withSuccessHandler(function(fechaFormateada) {
+          var display = document.getElementById('ultimaActividadDisplay');
+          if (!display) return;
+          if (fechaFormateada) {
+            display.textContent = 'Última actividad: ' + fechaFormateada;
+          } else {
+            display.textContent = 'Última actividad: sin datos';
+          }
+        })
+        .withFailureHandler(function(err) {
+          console.warn('No se pudo obtener última actividad:', err);
+        })
+        .getUltimaActividadAsociado(usuarioId);
     }
     
     function cargarEstadisticasGenerales(filtros = {}) {
