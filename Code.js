@@ -25,13 +25,13 @@ function getUsuarios() {
 function getEstadisticasUsuario(usuarioId) {
   try {
     console.log(`🔄 [API V1] getEstadisticasUsuario: ${usuarioId}`);
-    
+
     // 1. Obtener leads del usuario
     const leads = Leads.getLeadsPorUsuario(usuarioId);
-    
+
     // 2. Calcular métricas
     const metricas = Metricas.calcular(leads, { usuarioId });
-    
+
     // 3. Formatear leads para tabla
     var indexMap = {};
     try { indexMap = Usuarios.getUltimaActividadMap() || {}; } catch (e) { indexMap = {}; }
@@ -42,10 +42,10 @@ function getEstadisticasUsuario(usuarioId) {
         const fechaB = b.fecha === 'Sin fecha' ? 0 : new Date(b.fecha).getTime() || 0;
         return fechaB - fechaA;
       });
-    
+
     // 4. Obtener nombre del usuario
     const nombreUsuario = Usuarios.getNombrePorId(usuarioId);
-    
+
     return {
       usuarioId: usuarioId,
       usuarioNombre: nombreUsuario,
@@ -58,7 +58,7 @@ function getEstadisticasUsuario(usuarioId) {
       fechaActualizacion: new Date().toLocaleString('es-ES'),
       resumen: `📊 ${leads.length} leads para ${nombreUsuario}`
     };
-    
+
   } catch (error) {
     console.error(`❌ [API V1] Error en getEstadisticasUsuario:`, error);
     throw error;
@@ -71,18 +71,18 @@ function getEstadisticasUsuario(usuarioId) {
 function getEstadisticasGenerales() {
   try {
     console.log(`🔄 [API V1] getEstadisticasGenerales`);
-    
+
     const todosLosLeads = Leads.getLeads();
     const metricas = Metricas.calcular(todosLosLeads);
     const usuarios = Usuarios.getUsuarios();
-    
+
     return {
       total: todosLosLeads.length,
       estados: metricas.estados,
       usuariosActivos: usuarios.length,
       fechaActualizacion: new Date().toLocaleString('es-ES')
     };
-    
+
   } catch (error) {
     console.error(`❌ [API V1] Error en getEstadisticasGenerales:`, error);
     throw error;
@@ -110,24 +110,24 @@ function getAniosDisponibles() {
 function getEstadisticasUsuarioConFiltros(usuarioId, filtros = {}) {
   try {
     console.log(`🔄 getEstadisticasUsuarioConFiltros: ${usuarioId}`, filtros);
-    
+
     // 1. Obtener leads del usuario
     const leads = Leads.getLeadsPorUsuario(usuarioId);
-    
+
     // 2. Aplicar filtros de fecha
     let leadsFiltrados = [...leads];
-    
+
     if (filtros.anio) {
       leadsFiltrados = Filtros.filtrarPorAnio(leadsFiltrados, filtros.anio);
     }
     if (filtros.mes) {
       leadsFiltrados = Filtros.filtrarPorMes(leadsFiltrados, filtros.mes);
     }
-    
+
     // 3. Calcular métricas
     const metricas = Metricas.calcular(leadsFiltrados, { usuarioId });
     const metricasCuentas = Metricas.calcularMetricasCuentas(leadsFiltrados);
-    
+
     // 4. Formatear leads
     var indexMap = {};
     try { indexMap = Usuarios.getUltimaActividadMap() || {}; } catch (e) { indexMap = {}; }
@@ -138,9 +138,9 @@ function getEstadisticasUsuarioConFiltros(usuarioId, filtros = {}) {
         const fechaB = b.fecha === 'Sin fecha' ? 0 : new Date(b.fecha).getTime() || 0;
         return fechaB - fechaA;
       });
-    
+
     const nombreUsuario = Usuarios.getNombrePorId(usuarioId);
-    
+
     return {
       usuarioId: usuarioId,
       usuarioNombre: nombreUsuario,
@@ -154,7 +154,7 @@ function getEstadisticasUsuarioConFiltros(usuarioId, filtros = {}) {
       fechaActualizacion: new Date().toLocaleString('es-ES'),
       resumen: `📊 ${leadsFiltrados.length} leads para ${nombreUsuario}`
     };
-    
+
   } catch (error) {
     console.error('❌ Error en getEstadisticasUsuarioConFiltros:', error);
     return {
@@ -179,26 +179,26 @@ function getEstadisticasUsuarioConFiltros(usuarioId, filtros = {}) {
 function getEstadisticasGeneralesConFiltros(filtros = {}) {
   try {
     const todosLosLeads = Leads.getLeads();
-    
+
     let leadsFiltrados = [...todosLosLeads];
-    
+
     if (filtros.anio) {
       leadsFiltrados = Filtros.filtrarPorAnio(leadsFiltrados, filtros.anio);
     }
     if (filtros.mes) {
       leadsFiltrados = Filtros.filtrarPorMes(leadsFiltrados, filtros.mes);
     }
-    
+
     const metricas = Metricas.calcular(leadsFiltrados);
     const usuarios = Usuarios.getUsuarios();
-    
+
     return {
       total: leadsFiltrados.length,
       estados: metricas.estados,
       usuariosActivos: usuarios.length,
       fechaActualizacion: new Date().toLocaleString('es-ES')
     };
-    
+
   } catch (error) {
     console.error('❌ Error en getEstadisticasGeneralesConFiltros:', error);
     return {
@@ -218,57 +218,57 @@ function getEstadisticasGeneralesConFiltros(filtros = {}) {
 function getDashboardData(filtros = {}) {
   try {
     console.log(`🔄 [API V2] getDashboardData con filtros:`, filtros);
-    
+
     // 1. Obtener datos base
     const todosLosLeads = Leads.getLeads();
     const usuarios = Usuarios.getUsuarios();
-    
+
     // 2. Aplicar filtros
     const leadsFiltrados = Filtros.aplicar(todosLosLeads, filtros);
-    
+
     // 3. Calcular métricas generales
     const metricasGenerales = Metricas.calcular(leadsFiltrados);
-    
+
     // 4. Si hay usuario específico, calcular métricas para ese usuario
     let metricasUsuario = null;
     let leadsUsuario = [];
-    
+
     if (filtros.usuarioId) {
       leadsUsuario = Leads.getLeadsPorUsuario(filtros.usuarioId);
       const leadsUsuarioFiltrados = Filtros.aplicar(leadsUsuario, filtros);
-      metricasUsuario = Metricas.calcular(leadsUsuarioFiltrados, { 
-        usuarioId: filtros.usuarioId 
+      metricasUsuario = Metricas.calcular(leadsUsuarioFiltrados, {
+        usuarioId: filtros.usuarioId
       });
     }
-    
+
     // 5. Obtener años disponibles para filtros
     const aniosDisponibles = Fechas.getAniosDisponibles(todosLosLeads);
-    
+
     return {
       success: true,
       timestamp: new Date().toLocaleString('es-ES'),
       filtrosAplicados: filtros,
-      
+
       // Datos básicos
       usuarios: usuarios,
       totalUsuarios: usuarios.length,
-      
+
       // Métricas
       metricasGenerales: metricasGenerales,
       metricasUsuario: metricasUsuario,
-      
+
       // Datos para filtros
       aniosDisponibles: aniosDisponibles,
       estadosDisponibles: Object.keys(Leads.MAPA_ESTADOS),
-      
+
       // Leads formateados (si hay usuario)
-      leadsUsuario: (function(){
+      leadsUsuario: (function () {
         if (!filtros.usuarioId) return [];
-        try { var indexMap = Usuarios.getUltimaActividadMap() || {}; } catch(e){ indexMap = {}; }
+        try { var indexMap = Usuarios.getUltimaActividadMap() || {}; } catch (e) { indexMap = {}; }
         return Leads.formatearLeads(leadsUsuarioFiltrados || [], indexMap);
       })(),
     };
-    
+
   } catch (error) {
     console.error(`❌ [API V2] Error en getDashboardData:`, error);
     return {
@@ -291,39 +291,82 @@ function getDashboardData(filtros = {}) {
 function testAllModules() {
   console.log("🧪 TEST: Todos los módulos");
   console.log("==========================");
-  
+
   try {
     // Test Usuarios
     const usuarios = Usuarios.getUsuarios();
     console.log(`✅ Usuarios: ${usuarios.length} usuarios`);
-    
+
     // Test Leads
     const leads = Leads.getLeads();
     console.log(`✅ Leads: ${leads.length} leads`);
-    
+
     // Test Fechas
     if (leads.length > 0) {
       const fechaFormateada = Fechas.formatear(leads[0].fecha);
       console.log(`✅ Fechas: ${fechaFormateada}`);
     }
-    
+
     // Test Filtros
     const filtrados = Filtros.aplicar(leads, { anio: 2024 });
     console.log(`✅ Filtros: ${filtrados.length} leads en 2024`);
-    
+
     // Test Metricas
     const metricas = Metricas.calcular(leads);
     console.log(`✅ Metricas: ${metricas.total} leads procesados`);
     console.log(`   Estados:`, metricas.estados);
-    
+
     // Test API V2
     const dashboardData = getDashboardData();
     console.log(`✅ API V2: Dashboard data OK`);
-    
+
     console.log("==========================");
     console.log("🎉 Todos los módulos funcionan correctamente!");
-    
+
   } catch (error) {
     console.error("❌ Error en test:", error);
+  }
+}
+
+// ==========================================
+// CONFIGURACIÓN DE DISPARADORES (TRIGGERS)
+// ==========================================
+
+/**
+ * Instala el disparador automático para actualizar el índice de actividad.
+ * Ejecutar esta función UNA VEZ manualmente.
+ */
+function instalarDisparadores() {
+  try {
+    var functionName = 'buildUltimaActividadIndex';
+
+    // 1. Eliminar disparadores existentes para evitar duplicados
+    var triggers = ScriptApp.getProjectTriggers();
+    var deleted = 0;
+    for (var i = 0; i < triggers.length; i++) {
+      if (triggers[i].getHandlerFunction() === functionName) {
+        ScriptApp.deleteTrigger(triggers[i]);
+        deleted++;
+      }
+    }
+    console.log('🗑️ Disparadores anteriores eliminados: ' + deleted);
+
+    // 2. Crear nuevo disparador (cada 1 hora)
+    // Nota: buildUltimaActividadIndex está en Usuarios.js.
+    // Al ser un proyecto de Apps Script, las funciones top-level son globales.
+    // Sin embargo, buildUltimaActividadIndex está DENTRO del módulo Usuarios (closure)?
+    // REVISIÓN: Usuarios.js define var Usuarios = (function(){...}) pero 
+    // buildUltimaActividadIndex está DEFINIDA FUERA del IIFE en las últimas líneas de Usuarios.js
+    // Así que es accesible globalmente.
+
+    ScriptApp.newTrigger(functionName)
+      .timeBased()
+      .everyHours(1)
+      .create();
+
+    console.log('✅ Disparador instalado: ' + functionName + ' (Cada 1 hora)');
+
+  } catch (e) {
+    console.error('❌ Error instalando disparadores:', e);
   }
 }
