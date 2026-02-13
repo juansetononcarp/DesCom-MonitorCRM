@@ -815,7 +815,7 @@
               <th onclick="ordenarLeads('nombre')" style="cursor: pointer;">Nombre ⬍</th>
               <th onclick="ordenarLeads('fecha')" style="cursor: pointer;">Fecha ⬍</th>
               <th onclick="ordenarLeads('estado')" style="cursor: pointer;">Estado ⬍</th>
-              <!-- <th onclick="ordenarLeads('diasDesdeUltimaGestion')" style="cursor: pointer;">Días desde actividad ⬍</th> -->
+              <th>Última Act.</th>
             </tr>
           </thead>
           <tbody id="leadsTableBody">
@@ -1295,7 +1295,7 @@
           <td>${lead.nombre || 'Sin nombre'}</td>
           <td>${lead.fecha || 'Sin fecha'}</td>
           <td><span class="estado-badge ${estadoClass}">${estadoTexto}</span></td>
-          <!-- <td>${(lead.diasDesdeUltimaGestion === null || lead.diasDesdeUltimaGestion === undefined) ? '—' : lead.diasDesdeUltimaGestion + ' días'}</td> -->
+          <td>${lead.ultimaActividad || '—'}</td>
         `;
         tbody.appendChild(row);
       });

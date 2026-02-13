@@ -150,14 +150,21 @@ var Leads = (function () {
    */
   function formatearLead(lead, indexMap) {
     const nombreCompleto = `${lead.nombre || ''} ${lead.apellido || ''}`.trim() || 'Sin nombre';
+
+    // Obtener última actividad del indexMap
+    let ultimaActividadStr = '—';
+    if (indexMap && lead.leadId && indexMap[lead.leadId] && indexMap[lead.leadId].ultimaISO) {
+      ultimaActividadStr = Fechas.formatear(new Date(indexMap[lead.leadId].ultimaISO));
+    }
+
     return {
       id: lead.leadId !== undefined && lead.leadId !== null ? lead.leadId.toString() : 'N/A',
       nombre: nombreCompleto,
       fecha: Fechas.formatear(lead.fecha),
       estado: lead.estado || 'Sin estado',
       estadoClasificado: clasificarEstado(lead.estado),
-      creadoPor: lead.creadoPor || null
-      // Si se requiere, se puede calcular diasDesdeUltimaGestion aparte
+      creadoPor: lead.creadoPor || null,
+      ultimaActividad: ultimaActividadStr
     };
   }
 
