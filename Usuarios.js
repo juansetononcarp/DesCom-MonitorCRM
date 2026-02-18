@@ -214,14 +214,14 @@ function buildUltimaActividadIndex() {
     // Mapa temporal
     var index = {};
 
-    // Configuración estricta de columnas (LeadID Col, Date Col)
-    // Tareas: LeadID B(2), Date F(6)
-    // Agenda: LeadID B(2), Date J(10)
-    // Comentarios: LeadID B(2), Date E(5)
+    // Configuración estricta de columnas (LeadID Col, Date Col, Actor Col)
+    // Tareas: LeadID B(2), Date F(6), Actor I(9)
+    // Agenda: LeadID B(2), Date J(10), Actor I(9)
+    // Comentarios: LeadID B(2), Date E(5), Actor G(7)
     var sheetsConfig = [
-      { name: 'Tareas', leadCol: 2, dateCol: 6 },
-      { name: 'Agenda', leadCol: 2, dateCol: 10 },
-      { name: 'Comentarios', leadCol: 2, dateCol: 5 }
+      { name: 'Tareas', leadCol: 2, dateCol: 6, actorCol: 9 },
+      { name: 'Agenda', leadCol: 2, dateCol: 10, actorCol: 9 },
+      { name: 'Comentarios', leadCol: 2, dateCol: 5, actorCol: 7 }
     ];
 
     sheetsConfig.forEach(function (conf) {
@@ -231,10 +231,11 @@ function buildUltimaActividadIndex() {
       var lastRow = sheet.getLastRow();
       if (lastRow < 2) return;
 
-      // Leer columnas LeadID y Fecha
+      // Leer columnas LeadID, Fecha y Actor
       try {
         var leadVals = sheet.getRange(2, conf.leadCol, lastRow - 1, 1).getValues();
         var dateVals = sheet.getRange(2, conf.dateCol, lastRow - 1, 1).getValues();
+        var actorVals = sheet.getRange(2, conf.actorCol, lastRow - 1, 1).getValues();
 
         for (var i = 0; i < leadVals.length; i++) {
           var leadVal = leadVals[i][0];
@@ -246,9 +247,11 @@ function buildUltimaActividadIndex() {
           var parsed = parsePossiblySheetDate(dateVal);
           if (!parsed) continue;
 
+          var actorVal = actorVals[i][0] ? actorVals[i][0].toString().trim() : 'N/A';
+
           var existing = index[leadId];
           if (!existing || parsed.getTime() > new Date(existing.ultimaISO).getTime()) {
-            index[leadId] = { ultimaISO: parsed.toISOString(), origen: conf.name, actor: 'N/A', fila: i + 2 };
+            index[leadId] = { ultimaISO: parsed.toISOString(), origen: conf.name, actor: actorVal, fila: i + 2 };
           }
         }
       } catch (e) {

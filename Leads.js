@@ -16,6 +16,8 @@ var Leads = (function () {
 
     // Columnas adicionales (para futuras métricas)
     COL_CREADO_POR: 30,    // Columna AE - "Creado por"
+    COL_K: 33,             // Columna AH - "K"
+    COL_KV: 34,            // Columna AI - "Kv"
     COL_ULTIMA_GESTION: 38 // Columna AM - "Ult Coment AC"
   };
 
@@ -68,6 +70,8 @@ var Leads = (function () {
 
         // Datos adicionales
         creadoPor: row[CONFIG.COL_CREADO_POR] ? row[CONFIG.COL_CREADO_POR].toString().trim() : '',
+        k: row[CONFIG.COL_K] || '',
+        kv: row[CONFIG.COL_KV] || '',
         ultimaGestion: row[CONFIG.COL_ULTIMA_GESTION] || null,
 
         // Fila original para acceso futuro (reducimos data para cache)
@@ -153,8 +157,12 @@ var Leads = (function () {
 
     // Obtener última actividad del indexMap
     let ultimaActividadStr = '—';
+    let ultimaActividadOrigen = '';
+    let ultimaActividadActor = '';
     if (indexMap && lead.leadId && indexMap[lead.leadId] && indexMap[lead.leadId].ultimaISO) {
       ultimaActividadStr = Fechas.formatear(new Date(indexMap[lead.leadId].ultimaISO));
+      ultimaActividadOrigen = indexMap[lead.leadId].origen || '';
+      ultimaActividadActor = indexMap[lead.leadId].actor || '';
     }
 
     return {
@@ -164,7 +172,11 @@ var Leads = (function () {
       estado: lead.estado || 'Sin estado',
       estadoClasificado: clasificarEstado(lead.estado),
       creadoPor: lead.creadoPor || null,
-      ultimaActividad: ultimaActividadStr
+      k: lead.k || '',
+      kv: lead.kv || '',
+      ultimaActividad: ultimaActividadStr,
+      ultimaActividadOrigen: ultimaActividadOrigen,
+      ultimaActividadActor: ultimaActividadActor
     };
   }
 

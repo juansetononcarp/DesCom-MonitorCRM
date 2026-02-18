@@ -811,8 +811,9 @@
         <table>
           <thead>
             <tr>
-              <th onclick="ordenarLeads('id')" style="cursor: pointer;">ID ⬍</th>
               <th onclick="ordenarLeads('nombre')" style="cursor: pointer;">Nombre ⬍</th>
+              <th onclick="ordenarLeads('k')" style="cursor: pointer;">K ⬍</th>
+              <th onclick="ordenarLeads('kv')" style="cursor: pointer;">Kv ⬍</th>
               <th onclick="ordenarLeads('fecha')" style="cursor: pointer;">Fecha ⬍</th>
               <th onclick="ordenarLeads('estado')" style="cursor: pointer;">Estado ⬍</th>
               <th>Última Act.</th>
@@ -1290,12 +1291,15 @@
         else if (estadoClasificado === 'OPERANDO') estadoClass = 'estado-OPERANDO';
         else if (estadoClasificado === 'DESCARTADO') estadoClass = 'estado-DESCARTADO';
 
+        const origen = lead.ultimaActividadOrigen ? ` (${lead.ultimaActividadOrigen})` : '';
+
         row.innerHTML = `
-          <td>${lead.id || 'N/A'}</td>
           <td>${lead.nombre || 'Sin nombre'}</td>
+          <td>${lead.k || ''}</td>
+          <td>${lead.kv || ''}</td>
           <td>${lead.fecha || 'Sin fecha'}</td>
           <td><span class="estado-badge ${estadoClass}">${estadoTexto}</span></td>
-          <td>${lead.ultimaActividad || '—'}</td>
+          <td>${lead.ultimaActividad || '—'}${origen}</td>
         `;
         tbody.appendChild(row);
       });
