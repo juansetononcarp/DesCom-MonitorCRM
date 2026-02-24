@@ -64,7 +64,7 @@ var Leads = (function () {
         // Datos básicos
         idUsuario: row[CONFIG.COL_ID_USUARIO] ? row[CONFIG.COL_ID_USUARIO].toString().trim() : '',
         estado: row[CONFIG.COL_ESTADO] ? row[CONFIG.COL_ESTADO].toString().trim() : '',
-        leadId: row[CONFIG.COL_ID_LEAD] !== undefined && row[CONFIG.COL_ID_LEAD] !== null ? row[CONFIG.COL_ID_LEAD].toString().trim() : '',
+        leadId: row[CONFIG.COL_ID_LEAD] !== undefined && row[CONFIG.COL_ID_LEAD] !== null ? row[CONFIG.COL_ID_LEAD].toString().trim().replace(/\.0$/, "") : '',
         nombre: row[CONFIG.COL_NOMBRE] || '',
         apellido: row[CONFIG.COL_APELLIDO] || '',
         fecha: row[CONFIG.COL_FECHA],
@@ -162,7 +162,7 @@ var Leads = (function () {
     let ultimaActividadActor = '';
 
     // Normalizar leadId para la búsqueda
-    const lid = lead.leadId ? lead.leadId.toString().trim() : '';
+    const lid = lead.leadId ? lead.leadId.toString().trim().replace(/\.0$/, "") : '';
 
     if (indexMap && lid && indexMap[lid]) {
       const info = indexMap[lid];
