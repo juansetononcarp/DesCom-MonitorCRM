@@ -58,13 +58,25 @@ var Leads = (function () {
 
       if (lastRow < 2) return [];
 
+      const headers = sheet.getRange(1, 1, 1, lastColumn).getValues()[0];
+      let colLeadId = CONFIG.COL_ID_LEAD;
+
+      // Diagnóstico dinámico de columnas
+      if (headers[colLeadId] && headers[colLeadId].toString().toUpperCase().indexOf('LEAD') === -1) {
+        const foundIndex = headers.findIndex(h => h.toString().toUpperCase().indexOf('LEAD') !== -1);
+        if (foundIndex !== -1) {
+          console.log(`🔍 COL_ID_LEAD ajustada dinámicamente de ${colLeadId} a ${foundIndex}`);
+          colLeadId = foundIndex;
+        }
+      }
+
       const data = sheet.getRange(2, 1, lastRow - 1, lastColumn).getValues();
 
       const leads = data.map((row, index) => ({
         // Datos básicos
         idUsuario: row[CONFIG.COL_ID_USUARIO] ? row[CONFIG.COL_ID_USUARIO].toString().trim() : '',
         estado: row[CONFIG.COL_ESTADO] ? row[CONFIG.COL_ESTADO].toString().trim() : '',
-        leadId: row[CONFIG.COL_ID_LEAD] !== undefined && row[CONFIG.COL_ID_LEAD] !== null ? row[CONFIG.COL_ID_LEAD].toString().trim().replace(/\.0$/, "") : '',
+        leadId: row[colLeadId] !== undefined && row[colLeadId] !== null ? row[colLeadId].toString().trim().replace(/\.0$/, "") : '',
         nombre: row[CONFIG.COL_NOMBRE] || '',
         apellido: row[CONFIG.COL_APELLIDO] || '',
         fecha: row[CONFIG.COL_FECHA],
