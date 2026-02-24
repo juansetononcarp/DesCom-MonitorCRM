@@ -232,10 +232,11 @@ function getDashboardData(filtros = {}) {
     // 4. Si hay usuario específico, calcular métricas para ese usuario
     let metricasUsuario = null;
     let leadsUsuario = [];
+    let leadsUsuarioFiltrados = [];
 
     if (filtros.usuarioId) {
       leadsUsuario = Leads.getLeadsPorUsuario(filtros.usuarioId);
-      const leadsUsuarioFiltrados = Filtros.aplicar(leadsUsuario, filtros);
+      leadsUsuarioFiltrados = Filtros.aplicar(leadsUsuario, filtros);
       metricasUsuario = Metricas.calcular(leadsUsuarioFiltrados, {
         usuarioId: filtros.usuarioId
       });

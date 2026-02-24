@@ -7,12 +7,12 @@ function getDebugInfo() {
 
     var sheet = ss.getSheetByName('Leads');
     if (sheet) {
-        var maxCol = Math.min(sheet.getLastColumn(), 40); // Inspect first 40 cols (covers AL=37)
-        // Get headers (Row 1) and first 2 rows of data (Row 2, 3)
-        var range = sheet.getRange(1, 1, 3, maxCol).getValues();
-        result.leads.headers = range[0].map(function (c, i) { return i + ': ' + c; });
-        result.leads.row1 = range[1].map(function (c, i) { return i + ': ' + c; });
-        result.leads.row2 = range[2].map(function (c, i) { return i + ': ' + c; });
+        var lastCol = sheet.getLastColumn();
+        var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+        result.leads.headers = headers.map(function (c, i) { return i + ': ' + c; });
+
+        var sampleData = sheet.getRange(2, 1, 1, lastCol).getValues()[0];
+        result.leads.row1 = sampleData.map(function (c, i) { return i + ': ' + (c && c.toString().substring(0, 20)); });
     }
 
     var sheetU = ss.getSheetByName('Usuarios');

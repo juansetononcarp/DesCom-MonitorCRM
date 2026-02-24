@@ -209,6 +209,18 @@ function buildUltimaActividadIndex() {
   try {
     var start = new Date().getTime();
     var ss = SpreadsheetApp.getActiveSpreadsheet();
+
+    // Función de ayuda para obtener hoja ignorando espacios
+    function getSheetFlexible(name) {
+      var s = ss.getSheetByName(name);
+      if (s) return s;
+      var sheets = ss.getSheets();
+      for (var i = 0; i < sheets.length; i++) {
+        if (sheets[i].getName().trim() === name.trim()) return sheets[i];
+      }
+      return null;
+    }
+
     var sheetName = 'Ultima_Actividad';
 
     // Mapa temporal
@@ -232,7 +244,7 @@ function buildUltimaActividadIndex() {
     ];
 
     sheetsConfig.forEach(function (conf) {
-      var sheet = ss.getSheetByName(conf.name);
+      var sheet = getSheetFlexible(conf.name);
       if (!sheet) return;
 
       var lastRow = sheet.getLastRow();
@@ -267,7 +279,7 @@ function buildUltimaActividadIndex() {
     });
 
     // Escribir hoja
-    var outSheet = ss.getSheetByName(sheetName);
+    var outSheet = getSheetFlexible(sheetName);
     if (!outSheet) outSheet = ss.insertSheet(sheetName);
     outSheet.clear();
     var rows = [['LeadID', 'ultimaISO', 'origen', 'actor', 'fila']];
@@ -286,8 +298,24 @@ function buildUltimaActividadIndex() {
 function getUltimaActividadMap() {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var sheet = ss.getSheetByName('Ultima_Actividad');
-    if (!sheet) return {};
+    var sheetName = 'Ultima_Actividad';
+
+    // Búsqueda flexible
+    var sheet = ss.getSheetByName(sheetName);
+    if (!sheet) {
+      var sheets = ss.getSheets();
+      for (var i = 0; i < sheets.length; i++) {
+        if (sheets[i].getName().trim() === sheetName) {
+          sheet = sheets[i];
+          break;
+        }
+      }
+    }
+
+    if (!sheet) {
+      console.warn('⚠️ No se encontró la hoja ' + sheetName);
+      return {};
+    }
     var lastRow = sheet.getLastRow();
     if (lastRow < 2) return {};
     var data = sheet.getRange(2, 1, lastRow - 1, 5).getValues();
