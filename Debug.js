@@ -44,19 +44,18 @@ function verificarCruceDeDatos() {
 
         if (!lSheet || !uaSheet) return "Error: No se encuentran las hojas";
 
-        var leadsIdsRaw = lSheet.getRange(2, 1, Math.min(lSheet.getLastRow(), 10), 1).getValues().flat();
-        var uaIdsRaw = uaSheet.getRange(2, 1, Math.min(uaSheet.getLastRow(), 10), 1).getValues().flat();
+        var leadsIdsRaw = lSheet.getRange(2, 1, Math.min(lSheet.getLastRow() - 1, 20), 1).getValues().flat();
+        var uaIdsAll = uaSheet.getRange(2, 1, uaSheet.getLastRow() - 1, 1).getValues().flat().map(function (id) {
+            return id ? id.toString().trim().replace(/\.0$/, "") : "";
+        });
 
-        var report = "--- DIAGNÓSTICO DE CRUCE ---\n";
-        report += "Leads (Primeros 10): " + JSON.stringify(leadsIdsRaw) + "\n";
-        report += "Última Act. (Primeros 10): " + JSON.stringify(uaIdsRaw) + "\n\n";
+        var report = "--- DIAGNÓSTICO DE CRUCE REAL ---\n";
+        report += "Buscando los primeros 20 leads en TODA la hoja de Ultima Actividad...\n\n";
 
         leadsIdsRaw.forEach(function (lid, i) {
             var normL = lid ? lid.toString().trim().replace(/\.0$/, "") : "VACÍO";
-            var match = uaIdsRaw.some(function (uaid) {
-                return (uaid ? uaid.toString().trim().replace(/\.0$/, "") : "") === normL;
-            });
-            report += "Lead [" + lid + "] -> Normalizado: [" + normL + "] -> ¿Coincide en UA?: " + (match ? "SÍ ✅" : "NO ❌") + "\n";
+            var match = uaIdsAll.indexOf(normL) !== -1;
+            report += "ID [" + lid + "] -> Corregido: [" + normL + "] -> ¿Está en Actividad?: " + (match ? "SÍ ✅" : "NO ❌") + "\n";
         });
 
         return report;

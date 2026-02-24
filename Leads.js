@@ -70,6 +70,8 @@ var Leads = (function () {
         }
       }
 
+      const data = sheet.getRange(2, 1, lastRow - 1, lastColumn).getValues();
+
       const leads = data.map((row, index) => {
         const valRaw = row[colLeadId];
         const lidNormalizado = (valRaw !== undefined && valRaw !== null) ? valRaw.toString().trim().replace(/\.0$/, "") : '';
