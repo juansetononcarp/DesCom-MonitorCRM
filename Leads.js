@@ -41,7 +41,6 @@ var Leads = (function () {
       // Intentar leer de caché primero (ScriptMem o PropertiesService para persistencia corta)
       // Usamos CacheService para mejorar velocidad entre llamadas consecutivas del dashboard
       const cache = CacheService.getScriptCache();
-      cache.remove('LEADS_CACHE');
       const cached = cache.get('LEADS_CACHE');
       if (cached) {
         console.log('✅ Leads.getLeads: Recuperado de caché');

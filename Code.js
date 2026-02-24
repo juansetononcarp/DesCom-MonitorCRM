@@ -192,6 +192,8 @@ function getEstadisticasGeneralesConFiltros(filtros = {}) {
     const metricas = Metricas.calcular(leadsFiltrados);
     const usuarios = Usuarios.getUsuarios();
 
+    console.log(`✅ getEstadisticasGeneralesConFiltros: ${leadsFiltrados.length} leads filtrados para métricas globales.`);
+
     return {
       total: leadsFiltrados.length,
       estados: metricas.estados,
