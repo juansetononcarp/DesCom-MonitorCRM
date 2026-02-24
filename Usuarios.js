@@ -290,6 +290,7 @@ function getUltimaActividadMap() {
       if (!k) return;
       map[k] = { ultimaISO: row[1] || null, origen: row[2] || null, actor: row[3] || null, fila: row[4] || null };
     });
+    console.log('✅ Mapa de actividad cargado: ' + Object.keys(map).length + ' leads');
     return map;
   } catch (e) { return {}; }
 }
