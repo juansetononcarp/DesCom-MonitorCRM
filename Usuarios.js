@@ -214,6 +214,13 @@ function buildUltimaActividadIndex() {
     // Mapa temporal
     var index = {};
 
+    /** Normalización interna */
+    function normalizarId(val) {
+      if (val === null || val === undefined) return "";
+      var sid = val.toString().trim().replace(/\.0$/, "");
+      return sid;
+    }
+
     // Configuración estricta de columnas (LeadID Col, Date Col, Actor Col)
     // Tareas: LeadID B(2), Date F(6), Actor I(9)
     // Agenda: LeadID B(2), Date J(10), Actor I(9)
@@ -240,7 +247,7 @@ function buildUltimaActividadIndex() {
         for (var i = 0; i < leadVals.length; i++) {
           var leadVal = leadVals[i][0];
           if (!leadVal) continue;
-          var leadId = leadVal.toString().trim();
+          var leadId = normalizarId(leadVal);
           if (!leadId) continue;
 
           var dateVal = dateVals[i][0];
@@ -286,7 +293,7 @@ function getUltimaActividadMap() {
     var data = sheet.getRange(2, 1, lastRow - 1, 5).getValues();
     var map = {};
     data.forEach(function (row) {
-      var k = row[0] ? row[0].toString().trim() : '';
+      var k = row[0] ? row[0].toString().trim().replace(/\.0$/, "") : '';
       if (!k) return;
       map[k] = { ultimaISO: row[1] || null, origen: row[2] || null, actor: row[3] || null, fila: row[4] || null };
     });
