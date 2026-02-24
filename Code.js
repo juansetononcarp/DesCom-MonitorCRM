@@ -6,7 +6,7 @@
 
 function doGet() {
   return HtmlService.createHtmlOutputFromFile('Dashboard')
-    .setTitle('Dashboard de Leads')
+    .setTitle('Monitor CRM v1.3.2 [TEST]')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
