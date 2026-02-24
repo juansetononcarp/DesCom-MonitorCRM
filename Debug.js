@@ -32,3 +32,35 @@ function getDebugInfo() {
 
     return result;
 }
+
+/**
+ * Función técnica para diagnosticar por qué no coinciden los IDs
+ */
+function verificarCruceDeDatos() {
+    try {
+        var ss = SpreadsheetApp.getActiveSpreadsheet();
+        var lSheet = ss.getSheetByName('Leads');
+        var uaSheet = ss.getSheetByName('Ultima_Actividad');
+
+        if (!lSheet || !uaSheet) return "Error: No se encuentran las hojas";
+
+        var leadsIdsRaw = lSheet.getRange(2, 1, Math.min(lSheet.getLastRow(), 10), 1).getValues().flat();
+        var uaIdsRaw = uaSheet.getRange(2, 1, Math.min(uaSheet.getLastRow(), 10), 1).getValues().flat();
+
+        var report = "--- DIAGNÓSTICO DE CRUCE ---\n";
+        report += "Leads (Primeros 10): " + JSON.stringify(leadsIdsRaw) + "\n";
+        report += "Última Act. (Primeros 10): " + JSON.stringify(uaIdsRaw) + "\n\n";
+
+        leadsIdsRaw.forEach(function (lid, i) {
+            var normL = lid ? lid.toString().trim().replace(/\.0$/, "") : "VACÍO";
+            var match = uaIdsRaw.some(function (uaid) {
+                return (uaid ? uaid.toString().trim().replace(/\.0$/, "") : "") === normL;
+            });
+            report += "Lead [" + lid + "] -> Normalizado: [" + normL + "] -> ¿Coincide en UA?: " + (match ? "SÍ ✅" : "NO ❌") + "\n";
+        });
+
+        return report;
+    } catch (e) {
+        return "Error en diagnóstico: " + e.toString();
+    }
+}

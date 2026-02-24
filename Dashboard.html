@@ -1556,7 +1556,18 @@
             html += '<strong>Datos:</strong><br/>' + info.ultimaActividad.data.join('<br/>');
           }
 
+          html += '<h3>DIAGNÓSTICO DE CRUCE DE IDs</h3>';
+          html += '<p style="font-size:12px; color:#666; margin-bottom:10px;">Si ves "NO ❌", significa que el ID de Leads no coincide exactamente con el de Ultima_Actividad.</p>';
+          html += '<pre id="diagnosticoCruce" style="background:#f1f3f4; padding:10px; border-radius:4px; font-size:11px;">Cargando diagnóstico...</pre>';
+
           html += '</div>';
+
+          // Llamar al diagnóstico de cruce
+          google.script.run
+            .withSuccessHandler(function (report) {
+              document.getElementById('diagnosticoCruce').textContent = report;
+            })
+            .verificarCruceDeDatos();
 
           const div = document.createElement('div');
           div.style.cssText = 'position:fixed;top:10%;left:10%;width:80%;height:80%;background:white;border:2px solid black;padding:20px;z-index:9999;box-shadow:0 0 20px rgba(0,0,0,0.5);overflow:hidden;display:flex;flex-direction:column;';

@@ -70,26 +70,29 @@ var Leads = (function () {
         }
       }
 
-      const data = sheet.getRange(2, 1, lastRow - 1, lastColumn).getValues();
+      const leads = data.map((row, index) => {
+        const valRaw = row[colLeadId];
+        const lidNormalizado = (valRaw !== undefined && valRaw !== null) ? valRaw.toString().trim().replace(/\.0$/, "") : '';
 
-      const leads = data.map((row, index) => ({
-        // Datos básicos
-        idUsuario: row[CONFIG.COL_ID_USUARIO] ? row[CONFIG.COL_ID_USUARIO].toString().trim() : '',
-        estado: row[CONFIG.COL_ESTADO] ? row[CONFIG.COL_ESTADO].toString().trim() : '',
-        leadId: row[colLeadId] !== undefined && row[colLeadId] !== null ? row[colLeadId].toString().trim().replace(/\.0$/, "") : '',
-        nombre: row[CONFIG.COL_NOMBRE] || '',
-        apellido: row[CONFIG.COL_APELLIDO] || '',
-        fecha: row[CONFIG.COL_FECHA],
+        return {
+          // Datos básicos
+          idUsuario: row[CONFIG.COL_ID_USUARIO] ? row[CONFIG.COL_ID_USUARIO].toString().trim() : '',
+          estado: row[CONFIG.COL_ESTADO] ? row[CONFIG.COL_ESTADO].toString().trim() : '',
+          leadId: lidNormalizado,
+          nombre: row[CONFIG.COL_NOMBRE] || '',
+          apellido: row[CONFIG.COL_APELLIDO] || '',
+          fecha: row[CONFIG.COL_FECHA],
 
-        // Datos adicionales
-        creadoPor: row[CONFIG.COL_CREADO_POR] ? row[CONFIG.COL_CREADO_POR].toString().trim() : '',
-        k: row[CONFIG.COL_K] || '',
-        kv: row[CONFIG.COL_KV] || '',
-        ultimaGestion: row[CONFIG.COL_ULTIMA_GESTION] || null,
+          // Datos adicionales
+          creadoPor: row[CONFIG.COL_CREADO_POR] ? row[CONFIG.COL_CREADO_POR].toString().trim() : '',
+          k: row[CONFIG.COL_K] || '',
+          kv: row[CONFIG.COL_KV] || '',
+          ultimaGestion: row[CONFIG.COL_ULTIMA_GESTION] || null,
 
-        // Fila original para acceso futuro (reducimos data para cache)
-        _filaNumero: index + 2
-      }));
+          // Fila original para acceso futuro (reducimos data para cache)
+          _filaNumero: index + 2
+        };
+      });
 
       console.log(`✅ Leads.getLeads: ${leads.length} leads obtenidos (origen)`);
 
