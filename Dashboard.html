@@ -3,7 +3,7 @@
 
 <head>
   <base target="_top">
-  <title>Monitor de CRM v1.3.0 [DARK MODE]</title>
+  <title>Monitor CRM v1.3.7 [CORE]</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta charset="UTF-8">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -672,6 +672,10 @@
           <div class="stat-value" id="generalDescartados">0</div>
           <div class="stat-label">Descartados</div>
         </div>
+        <div class="stat-item">
+          <div class="stat-value" id="generalOtros">0</div>
+          <div class="stat-label">Otros</div>
+        </div>
       </div>
     </div>
 
@@ -1008,15 +1012,16 @@
             select.onchange = function () {
               const userId = this.value;
               console.log('selectUsuario onchange -> value:', userId);
-              if (userId) {
-                currentUser = userId;
-                filtrosActuales.usuarioId = userId;
-                cargarEstadisticasUsuario(userId, filtrosActuales);
+              currentUser = userId || null;
+              filtrosActuales.usuarioId = currentUser;
+
+              if (currentUser) {
+                cargarEstadisticasUsuario(currentUser, filtrosActuales);
               } else {
-                currentUser = null;
-                filtrosActuales.usuarioId = null;
                 limpiarUIUsuario();
               }
+              // Siempre refrescar generales al cambiar asesor para alinearlos
+              cargarEstadisticasGenerales(filtrosActuales);
             };
 
             // Selección automática del primer usuario válido

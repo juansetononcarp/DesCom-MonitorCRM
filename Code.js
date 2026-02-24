@@ -190,14 +190,16 @@ function getEstadisticasGeneralesConFiltros(filtros = {}) {
     }
 
     const metricas = Metricas.calcular(leadsFiltrados);
-    const usuarios = Usuarios.getUsuarios();
 
-    console.log(`✅ getEstadisticasGeneralesConFiltros: ${leadsFiltrados.length} leads filtrados para métricas globales.`);
+    // Contar cuántos asesores únicos tienen leads en este filtro
+    const asesoresConLeads = [...new Set(leadsFiltrados.map(l => l.idUsuario).filter(id => id))].length;
+
+    console.log(`✅ getEstadisticasGeneralesConFiltros: ${leadsFiltrados.length} leads, ${asesoresConLeads} asesores activos.`);
 
     return {
       total: leadsFiltrados.length,
       estados: metricas.estados,
-      usuariosActivos: usuarios.length,
+      usuariosActivos: asesoresConLeads, // Mostrar asesores con leads en este periodo
       fechaActualizacion: new Date().toLocaleString('es-ES')
     };
 
