@@ -198,6 +198,7 @@ var Leads = (function () {
       k: lead.k || '',
       kv: lead.kv || '',
       ultimaActividad: ultimaActividadStr,
+      ultimaActividadISO: (indexMap && lid && indexMap[lid]) ? indexMap[lid].ultimaISO : '',
       ultimaActividadOrigen: ultimaActividadOrigen,
       ultimaActividadActor: ultimaActividadActor
     };

@@ -816,7 +816,7 @@
               <th onclick="ordenarLeads('kv')" style="cursor: pointer;">Kv ⬍</th>
               <th onclick="ordenarLeads('fecha')" style="cursor: pointer;">Fecha ⬍</th>
               <th onclick="ordenarLeads('estado')" style="cursor: pointer;">Estado ⬍</th>
-              <th>Última Act.</th>
+              <th onclick="ordenarLeads('ultimaActividad')" style="cursor: pointer;">Última Act. ⬍</th>
             </tr>
           </thead>
           <tbody id="leadsTableBody">
@@ -1200,17 +1200,21 @@
 
     function actualizarEstadisticasGenerales(data) {
       if (!data) return;
+      console.log('🌐 Actualizando Estadísticas Generales:', data);
 
-      document.getElementById('totalGeneralLeads').textContent = data.total || 0;
-      document.getElementById('totalUsuarios').textContent = data.usuariosActivos || 0;
+      const totalEl = document.getElementById('totalGeneralLeads');
+      const usuariosEl = document.getElementById('totalUsuarios');
+
+      if (totalEl) totalEl.textContent = data.total || 0;
+      if (usuariosEl) usuariosEl.textContent = data.usuariosActivos || 0;
 
       if (data.estados) {
-        document.getElementById('generalNuevos').textContent = data.estados.NUEVO || 0;
-        document.getElementById('generalAbiertos').textContent = data.estados.ABIERTO || 0;
-        document.getElementById('generalConvertidos').textContent = data.estados.CONVERTIDO || 0;
-        document.getElementById('generalActivos').textContent = data.estados.ACTIVO || 0;
-        document.getElementById('generalOperando').textContent = data.estados.OPERANDO || 0;
-        document.getElementById('generalDescartados').textContent = data.estados.DESCARTADO || 0;
+        if (document.getElementById('generalNuevos')) document.getElementById('generalNuevos').textContent = data.estados.NUEVO || 0;
+        if (document.getElementById('generalAbiertos')) document.getElementById('generalAbiertos').textContent = data.estados.ABIERTO || 0;
+        if (document.getElementById('generalConvertidos')) document.getElementById('generalConvertidos').textContent = data.estados.CONVERTIDO || 0;
+        if (document.getElementById('generalActivos')) document.getElementById('generalActivos').textContent = data.estados.ACTIVO || 0;
+        if (document.getElementById('generalOperando')) document.getElementById('generalOperando').textContent = data.estados.OPERANDO || 0;
+        if (document.getElementById('generalDescartados')) document.getElementById('generalDescartados').textContent = data.estados.DESCARTADO || 0;
       }
     }
 
@@ -1408,6 +1412,9 @@
         if (columna === 'fecha') {
           valA = new Date(valA);
           valB = new Date(valB);
+        } else if (columna === 'ultimaActividad') {
+          valA = a.ultimaActividadISO || '';
+          valB = b.ultimaActividadISO || '';
         }
 
         if (typeof valA === 'string') valA = valA.toLowerCase();
