@@ -22,5 +22,13 @@ function getDebugInfo() {
         if (rangeU.length > 1) result.usuarios.row1 = rangeU[1];
     }
 
+    var sheetUA = ss.getSheetByName('Ultima_Actividad');
+    if (sheetUA) {
+        var dataUA = sheetUA.getRange(1, 1, Math.min(sheetUA.getLastRow(), 10), 5).getValues();
+        result.ultimaActividad = {
+            data: dataUA.map(function (row) { return row.join(' | '); })
+        };
+    }
+
     return result;
 }

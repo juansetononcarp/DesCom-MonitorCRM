@@ -41,6 +41,7 @@ var Leads = (function () {
       // Intentar leer de caché primero (ScriptMem o PropertiesService para persistencia corta)
       // Usamos CacheService para mejorar velocidad entre llamadas consecutivas del dashboard
       const cache = CacheService.getScriptCache();
+      cache.remove('LEADS_CACHE');
       const cached = cache.get('LEADS_CACHE');
       if (cached) {
         console.log('✅ Leads.getLeads: Recuperado de caché');
@@ -63,7 +64,7 @@ var Leads = (function () {
         // Datos básicos
         idUsuario: row[CONFIG.COL_ID_USUARIO] ? row[CONFIG.COL_ID_USUARIO].toString().trim() : '',
         estado: row[CONFIG.COL_ESTADO] ? row[CONFIG.COL_ESTADO].toString().trim() : '',
-        leadId: row[CONFIG.COL_ID_LEAD],
+        leadId: row[CONFIG.COL_ID_LEAD] !== undefined && row[CONFIG.COL_ID_LEAD] !== null ? row[CONFIG.COL_ID_LEAD].toString().trim() : '',
         nombre: row[CONFIG.COL_NOMBRE] || '',
         apellido: row[CONFIG.COL_APELLIDO] || '',
         fecha: row[CONFIG.COL_FECHA],
@@ -159,10 +160,15 @@ var Leads = (function () {
     let ultimaActividadStr = '—';
     let ultimaActividadOrigen = '';
     let ultimaActividadActor = '';
-    if (indexMap && lead.leadId && indexMap[lead.leadId] && indexMap[lead.leadId].ultimaISO) {
-      ultimaActividadStr = Fechas.formatear(new Date(indexMap[lead.leadId].ultimaISO));
-      ultimaActividadOrigen = indexMap[lead.leadId].origen || '';
-      ultimaActividadActor = indexMap[lead.leadId].actor || '';
+
+    // Normalizar leadId para la búsqueda
+    const lid = lead.leadId ? lead.leadId.toString().trim() : '';
+
+    if (indexMap && lid && indexMap[lid]) {
+      const info = indexMap[lid];
+      ultimaActividadStr = Fechas.formatear(info.ultimaISO); // Fechas.formatear ya maneja Date, ISO y números
+      ultimaActividadOrigen = info.origen || '';
+      ultimaActividadActor = info.actor || '';
     }
 
     return {

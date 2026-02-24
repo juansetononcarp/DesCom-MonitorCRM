@@ -286,9 +286,9 @@ function getUltimaActividadMap() {
     var data = sheet.getRange(2, 1, lastRow - 1, 5).getValues();
     var map = {};
     data.forEach(function (row) {
-      var k = row[0] ? row[0].toString() : '';
+      var k = row[0] ? row[0].toString().trim() : '';
       if (!k) return;
-      map[k.toString()] = { ultimaISO: row[1] || null, origen: row[2] || null, actor: row[3] || null, fila: row[4] || null };
+      map[k] = { ultimaISO: row[1] || null, origen: row[2] || null, actor: row[3] || null, fila: row[4] || null };
     });
     return map;
   } catch (e) { return {}; }

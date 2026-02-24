@@ -3,7 +3,7 @@
 
 <head>
   <base target="_top">
-  <title>Nuevo Monitor de CRM</title>
+  <title>Monitor de CRM v1.2</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta charset="UTF-8">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -1549,7 +1549,12 @@
           html += '<strong>Dato Real (Fila 2):</strong><br/>' + JSON.stringify(info.leads.row1, null, 2) + '<br/><br/>';
 
           html += '<h3>Hoja USUARIOS</h3>';
-          html += '<strong>Datos:</strong><br/>' + JSON.stringify(info.usuarios, null, 2);
+          html += '<strong>Datos:</strong><br/>' + JSON.stringify(info.usuarios, null, 2) + '<br/><br/>';
+
+          if (info.ultimaActividad) {
+            html += '<h3>Hoja ULTIMA ACTIVIDAD (Primeras 10 filas)</h3>';
+            html += '<strong>Datos:</strong><br/>' + info.ultimaActividad.data.join('<br/>');
+          }
 
           html += '</div>';
 
