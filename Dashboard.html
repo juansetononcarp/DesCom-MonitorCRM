@@ -1215,6 +1215,7 @@
         if (document.getElementById('generalActivos')) document.getElementById('generalActivos').textContent = data.estados.ACTIVO || 0;
         if (document.getElementById('generalOperando')) document.getElementById('generalOperando').textContent = data.estados.OPERANDO || 0;
         if (document.getElementById('generalDescartados')) document.getElementById('generalDescartados').textContent = data.estados.DESCARTADO || 0;
+        if (document.getElementById('generalOtros')) document.getElementById('generalOtros').textContent = data.estados.OTROS || 0;
       }
     }
 
@@ -1410,8 +1411,8 @@
         let valB = b[columna] || '';
 
         if (columna === 'fecha') {
-          valA = new Date(valA);
-          valB = new Date(valB);
+          valA = a.fechaISO || '';
+          valB = b.fechaISO || '';
         } else if (columna === 'ultimaActividad') {
           valA = a.ultimaActividadISO || '';
           valB = b.ultimaActividadISO || '';

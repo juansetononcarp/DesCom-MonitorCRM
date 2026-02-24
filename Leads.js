@@ -41,6 +41,8 @@ var Leads = (function () {
       // Intentar leer de caché primero (ScriptMem o PropertiesService para persistencia corta)
       // Usamos CacheService para mejorar velocidad entre llamadas consecutivas del dashboard
       const cache = CacheService.getScriptCache();
+      // Forzar limpieza de caché una vez para asegurar nuevo formato de datos
+      cache.remove('LEADS_CACHE');
       const cached = cache.get('LEADS_CACHE');
       if (cached) {
         console.log('✅ Leads.getLeads: Recuperado de caché');
@@ -191,6 +193,7 @@ var Leads = (function () {
       id: lead.leadId !== undefined && lead.leadId !== null ? lead.leadId.toString() : 'N/A',
       nombre: nombreCompleto,
       fecha: Fechas.formatear(lead.fecha),
+      fechaISO: lead.fecha instanceof Date ? lead.fecha.toISOString() : (new Date(lead.fecha).toISOString() || ''),
       estado: lead.estado || 'Sin estado',
       estadoClasificado: clasificarEstado(lead.estado),
       creadoPor: lead.creadoPor || null,
