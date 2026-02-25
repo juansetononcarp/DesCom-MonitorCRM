@@ -114,29 +114,38 @@ function getEstadisticasUsuarioConFiltros(usuarioId, filtros = {}) {
     // 1. Obtener leads del usuario
     const leads = Leads.getLeadsPorUsuario(usuarioId);
 
-    // 2. Aplicar filtros de fecha
-    let leadsFiltrados = [...leads];
+    // 2. Aplicar filtros de fecha y DEDUPLICAR por LeadID
+    const uniqueLeadsMap = new Map();
+    leads.forEach(lead => {
+      // Filtrar por fecha antes de guardar en el mapa de únicos
+      let matchAnio = !filtros.anio || filtros.anio === "" || Fechas.getAnio(lead.fecha) === parseInt(filtros.anio);
+      let matchMes = !filtros.mes || filtros.mes === "" || Fechas.getMes(lead.fecha) === parseInt(filtros.mes);
 
-    if (filtros.anio) {
-      leadsFiltrados = Filtros.filtrarPorAnio(leadsFiltrados, filtros.anio);
-    }
-    if (filtros.mes) {
-      leadsFiltrados = Filtros.filtrarPorMes(leadsFiltrados, filtros.mes);
-    }
+      if (matchAnio && matchMes) {
+        const lid = lead.leadId || ("TEMP_" + Math.random());
+        // Si hay duplicados, conservamos el primero o el último (aquí el último)
+        uniqueLeadsMap.set(lid, lead);
+      }
+    });
 
-    // 3. Calcular métricas
-    const metricas = Metricas.calcular(leadsFiltrados, { usuarioId });
-    const metricasCuentas = Metricas.calcularMetricasCuentas(leadsFiltrados);
+    const leadsFiltradosUnicos = Array.from(uniqueLeadsMap.values());
 
-    // 4. Formatear leads
+    // 3. Calcular métricas sobre leads únicos
+    const metricas = Metricas.calcular(leadsFiltradosUnicos, { usuarioId });
+    const metricasCuentas = Metricas.calcularMetricasCuentas(leadsFiltradosUnicos);
+
+    // 4. Formatear leads (aquí podemos mostrar todos o solo los únicos, optamos por únicos para consistencia)
     var indexMap = {};
     try { indexMap = Usuarios.getUltimaActividadMap() || {}; } catch (e) { indexMap = {}; }
-    const todosLosLeads = leadsFiltrados
+    const leadsFormateados = leadsFiltradosUnicos
       .map(lead => Leads.formatearLead(lead, indexMap))
       .sort((a, b) => {
-        const fechaA = a.fecha === 'Sin fecha' ? 0 : new Date(a.fecha).getTime() || 0;
-        const fechaB = b.fecha === 'Sin fecha' ? 0 : new Date(b.fecha).getTime() || 0;
-        return fechaB - fechaA;
+        // Ordenar por fecha ISO si existe, si no por fecha normal
+        const valA = a.fechaISO || '';
+        const valB = b.fechaISO || '';
+        if (valA < valB) return 1;
+        if (valA > valB) return -1;
+        return 0;
       });
 
     const nombreUsuario = Usuarios.getNombrePorId(usuarioId);
@@ -144,15 +153,15 @@ function getEstadisticasUsuarioConFiltros(usuarioId, filtros = {}) {
     return {
       usuarioId: usuarioId,
       usuarioNombre: nombreUsuario,
-      total: leadsFiltrados.length,
+      total: leadsFiltradosUnicos.length,
       estados: metricas.estados,
       porcentajes: metricas.porcentajes,
-      todosLosLeads: todosLosLeads,
-      ultimosLeads: todosLosLeads.slice(0, 5),
+      todosLosLeads: leadsFormateados,
+      ultimosLeads: leadsFormateados.slice(0, 5),
       metricasCuentas: metricasCuentas,
       otrosEstados: metricas.otrosEstados || {},
       fechaActualizacion: new Date().toLocaleString('es-ES'),
-      resumen: `📊 ${leadsFiltrados.length} leads para ${nombreUsuario}`
+      resumen: `📊 ${leadsFiltradosUnicos.length} leads únicos para ${nombreUsuario}`
     };
 
   } catch (error) {
@@ -178,30 +187,40 @@ function getEstadisticasUsuarioConFiltros(usuarioId, filtros = {}) {
  */
 function getEstadisticasGeneralesConFiltros(filtros = {}) {
   try {
-    // 1. Obtener todos los leads (limpio de filtros anteriores)
+    // 1. Obtener lista de mails válidos desde 'Usuarios'
+    const usuarios = Usuarios.getUsuarios();
+    const mailsValidos = new Set(usuarios.map(u => u.id.toLowerCase()));
+
+    // 2. Obtener todos los leads
     const todosLosLeads = Leads.getLeads();
 
-    // 2. Aplicar únicamente filtros de fecha (Ignorar usuarioId para estadísticas generales)
-    let leadsFiltrados = [...todosLosLeads];
+    // 3. Filtrar leads por asesor válido y fecha, y DEDUPLICAR por LeadID
+    const uniqueLeadsMap = new Map();
+    todosLosLeads.forEach(lead => {
+      const idUsu = lead.idUsuario ? lead.idUsuario.toString().trim().toLowerCase() : "";
 
-    if (filtros.anio && filtros.anio !== "") {
-      leadsFiltrados = Filtros.filtrarPorAnio(leadsFiltrados, filtros.anio);
-    }
-    if (filtros.mes && filtros.mes !== "") {
-      leadsFiltrados = Filtros.filtrarPorMes(leadsFiltrados, filtros.mes);
-    }
+      // Solo si el asesor es válido
+      if (mailsValidos.has(idUsu)) {
+        // Filtrar por fecha
+        let matchAnio = !filtros.anio || filtros.anio === "" || Fechas.getAnio(lead.fecha) === parseInt(filtros.anio);
+        let matchMes = !filtros.mes || filtros.mes === "" || Fechas.getMes(lead.fecha) === parseInt(filtros.mes);
 
-    const metricas = Metricas.calcular(leadsFiltrados);
+        if (matchAnio && matchMes) {
+          const lid = lead.leadId || ("TEMP_" + Math.random());
+          uniqueLeadsMap.set(lid, lead);
+        }
+      }
+    });
 
-    // Contar cuántos asesores únicos tienen leads en este filtro
-    const asesoresConLeads = [...new Set(leadsFiltrados.map(l => l.idUsuario).filter(id => id))].length;
+    const leadsUnicos = Array.from(uniqueLeadsMap.values());
+    const metricas = Metricas.calcular(leadsUnicos);
 
-    console.log(`✅ getEstadisticasGeneralesConFiltros: ${leadsFiltrados.length} leads, ${asesoresConLeads} asesores activos.`);
+    console.log(`✅ getEstadisticasGeneralesConFiltros: ${leadsUnicos.length} leads únicos, ${usuarios.length} asesores válidos.`);
 
     return {
-      total: leadsFiltrados.length,
+      total: leadsUnicos.length,
       estados: metricas.estados,
-      usuariosActivos: asesoresConLeads, // Mostrar asesores con leads en este periodo
+      usuariosActivos: usuarios.length, // Total de mails únicos en la hoja Usuarios
       fechaActualizacion: new Date().toLocaleString('es-ES')
     };
 
@@ -525,18 +544,43 @@ var Leads = (function () {
       }
 
       const data = sheet.getRange(2, 1, lastRow - 1, lastColumn).getValues();
-      const leads = data.map((row, index) => {
-        const valRaw = row[colLeadId];
-        const lidNormalizado = (valRaw !== undefined && valRaw !== null) ? valRaw.toString().trim().replace(/\.0$/, "") : '';
-        return {
-          idUsuario: row[CONFIG.COL_ID_USUARIO] ? row[CONFIG.COL_ID_USUARIO].toString().trim() : '',
-          estado: row[CONFIG.COL_ESTADO] ? row[CONFIG.COL_ESTADO].toString().trim() : '',
-          leadId: lidNormalizado, nombre: row[CONFIG.COL_NOMBRE] || '', apellido: row[CONFIG.COL_APELLIDO] || '', fecha: row[CONFIG.COL_FECHA],
-          creadoPor: row[CONFIG.COL_CREADO_POR] ? row[CONFIG.COL_CREADO_POR].toString().trim() : '',
-          k: row[CONFIG.COL_K] || '', kv: row[CONFIG.COL_KV] || '', ultimaGestion: row[CONFIG.COL_ULTIMA_GESTION] || null,
-          _filaNumero: index + 2
-        };
+
+      // 1. Obtener usuarios válidos para filtrar inmediatamente
+      const usuariosValidos = Usuarios.getUsuarios();
+      const mailsValidos = new Set(usuariosValidos.map(u => u.id.toLowerCase()));
+
+      // 2. Mapa para deduplicación por LeadID
+      const uniqueLeadsMap = new Map();
+
+      data.forEach((row, index) => {
+        const idUsu = row[CONFIG.COL_ID_USUARIO] ? row[CONFIG.COL_ID_USUARIO].toString().trim().toLowerCase() : '';
+
+        // Solo si el asesor está en la hoja Usuarios
+        if (mailsValidos.has(idUsu)) {
+          const valRaw = row[colLeadId];
+          const lid = (valRaw !== undefined && valRaw !== null) ? valRaw.toString().trim().replace(/\.0$/, "") : '';
+
+          if (lid) {
+            // Guardar en el mapa (si ya existe, se pisa con el último, cumpliendo el requisito de valores únicos)
+            uniqueLeadsMap.set(lid, {
+              idUsuario: idUsu,
+              estado: row[CONFIG.COL_ESTADO] ? row[CONFIG.COL_ESTADO].toString().trim() : '',
+              leadId: lid,
+              nombre: row[CONFIG.COL_NOMBRE] || '',
+              apellido: row[CONFIG.COL_APELLIDO] || '',
+              fecha: row[CONFIG.COL_FECHA],
+              creadoPor: row[CONFIG.COL_CREADO_POR] ? row[CONFIG.COL_CREADO_POR].toString().trim() : '',
+              k: row[CONFIG.COL_K] || '',
+              kv: row[CONFIG.COL_KV] || '',
+              ultimaGestion: row[CONFIG.COL_ULTIMA_GESTION] || null,
+              _filaNumero: index + 2
+            });
+          }
+        }
       });
+
+      const leads = Array.from(uniqueLeadsMap.values());
+      console.log(`✅ Leads.getLeads: ${leads.length} leads únicos y válidos obtenidos`);
 
       try { cache.put(cacheKey, JSON.stringify(leads), 600); } catch (e) { }
       return leads;
@@ -706,7 +750,17 @@ var Usuarios = (function () {
       var lastRow = sheet.getLastRow();
       if (lastRow < 2) return [];
       var data = sheet.getRange(2, 1, lastRow - 1, 2).getValues();
-      return data.filter(row => row[1]).map(row => ({ id: row[0].toString().trim(), nombre: row[1].toString().trim() })).filter(u => u.id && u.nombre);
+
+      const uniqueUsersMap = new Map();
+      data.forEach(row => {
+        const mail = row[0] ? row[0].toString().trim() : '';
+        const nombre = row[1] ? row[1].toString().trim() : '';
+        if (mail && nombre && !uniqueUsersMap.has(mail.toLowerCase())) {
+          uniqueUsersMap.set(mail.toLowerCase(), { id: mail, nombre: nombre });
+        }
+      });
+
+      return Array.from(uniqueUsersMap.values());
     } catch (e) { return []; }
   }
 
