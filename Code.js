@@ -6,7 +6,7 @@
 
 function doGet() {
   return HtmlService.createHtmlOutputFromFile('Dashboard')
-    .setTitle('Monitor CRM v1.3.7 [CORE]')
+    .setTitle('Monitor CRM v1.3.10 [FIX-METRICS]')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
@@ -511,8 +511,16 @@ var Filtros = (function () {
 
 var Leads = (function () {
   const CONFIG = {
-    COL_ID_USUARIO: 2, COL_ESTADO: 37, COL_ID_LEAD: 0, COL_NOMBRE: 4, COL_APELLIDO: 5, COL_FECHA: 1,
-    COL_CREADO_POR: 30, COL_K: 33, COL_KV: 34, COL_ULTIMA_GESTION: 38
+    COL_ID_LEAD: 0,      // Columna A (LeadID)
+    COL_FECHA: 1,        // Columna B (Fecha Registro)
+    COL_ID_USUARIO: 2,   // Columna C (Asesor - Mail)
+    COL_NOMBRE: 4,       // Columna E
+    COL_APELLIDO: 5,     // Columna F
+    COL_CREADO_POR: 30,  // Columna AF (Probablemente)
+    COL_K: 33,           // Columna AH
+    COL_KV: 34,          // Columna AI
+    COL_ESTADO: 37,      // Columna AL (Estado)
+    COL_ULTIMA_GESTION: 38 // Columna AM
   };
 
   const MAPA_ESTADOS = {
@@ -844,21 +852,31 @@ var Usuarios = (function () {
       var uid = usuarioId.toString().trim().toLowerCase();
       var ss = SpreadsheetApp.getActiveSpreadsheet();
       var maxDate = null;
+
+      // Columnas 0-indexed: LeadID es 0, Mail es depende la hoja
       function check(name, uCol, dCol) {
         var s = ss.getSheetByName(name); if (!s) return;
         var last = s.getLastRow(); if (last < 2) return;
-        var uVs = s.getRange(2, uCol, last - 1, 1).getValues();
-        var dVs = s.getRange(2, dCol, last - 1, 1).getValues();
-        for (var i = 0; i < uVs.length; i++) {
-          if (uVs[i][0] && uVs[i][0].toString().trim().toLowerCase() === uid) {
-            var d = parsePossiblySheetDate(dVs[i][0]);
+        var data = s.getRange(2, 1, last - 1, Math.max(uCol, dCol) + 1).getValues();
+        for (var i = 0; i < data.length; i++) {
+          if (data[i][uCol] && data[i][uCol].toString().trim().toLowerCase() === uid) {
+            var d = parsePossiblySheetDate(data[i][dCol]);
             if (d && (!maxDate || d.getTime() > maxDate.getTime())) maxDate = d;
           }
         }
       }
-      check('Leads', 31, 2); check('Tareas', 9, 6); check('Agenda', 9, 10); check('Comentarios', 7, 5);
-      return maxDate ? (Fechas.formatear ? Fechas.formatear(maxDate) : maxDate.toLocaleString()) : "Sin actividad reciente";
-    } catch (e) { return "Error"; }
+
+      // Ajuste de columnas según descripción (Leads: C=2 es asesor, B=1 es fecha)
+      check('Leads', 2, 1);
+      check('Tareas', 8, 5); // Tareas: Col I (8) es actor, Col F (5) es fecha
+      check('Agenda', 8, 9); // Agenda: Col I (8) es actor, Col J (9) es fecha
+      check('Comentarios', 6, 4); // Comentarios: Col G (6) es actor, Col E (4) es fecha
+
+      return maxDate ? Fechas.formatear(maxDate) : "Sin actividad reciente";
+    } catch (e) {
+      console.error('Error en getUltimaActividadAsociado:', e);
+      return "Error";
+    }
   }
 
   return { getUsuarios, getNombrePorId, getUsuarioPorId, getEstadisticas, buildUltimaActividadIndex, getUltimaActividadMap, getUltimaActividadAsociado };
