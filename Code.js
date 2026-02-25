@@ -6,7 +6,7 @@
 
 function doGet() {
   return HtmlService.createHtmlOutputFromFile('Dashboard')
-    .setTitle('Monitor CRM v1.3.10 [FIX-METRICS]')
+    .setTitle('Monitor CRM v1.3.11 [PRECISION]')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
@@ -532,7 +532,7 @@ var Leads = (function () {
   function getLeads() {
     try {
       const cache = CacheService.getScriptCache();
-      const cacheKey = 'LEADS_CACHE_V3'; // Nueva versión de caché para forzar refresco
+      const cacheKey = 'LEADS_CACHE_V4'; // Bump version
       const cached = cache.get(cacheKey);
       if (cached) return JSON.parse(cached);
 
@@ -762,8 +762,8 @@ var Usuarios = (function () {
       const uniqueUsersMap = new Map();
       data.forEach(row => {
         const mail = row[0] ? row[0].toString().trim() : '';
-        const nombre = row[1] ? row[1].toString().trim() : '';
-        if (mail && nombre && !uniqueUsersMap.has(mail.toLowerCase())) {
+        const nombre = row[1] ? row[1].toString().trim() : (mail.split('@')[0] || 'Sin Nombre');
+        if (mail && !uniqueUsersMap.has(mail.toLowerCase())) {
           uniqueUsersMap.set(mail.toLowerCase(), { id: mail, nombre: nombre });
         }
       });
