@@ -1172,30 +1172,44 @@
       const colores = ['#4285f4', '#34a853', '#fbbc05', '#ea4335', '#673ab7', '#9e9e9e', '#9aa0a6'];
 
       chartInstance = new Chart(ctx, {
-        type: 'doughnut',
+        type: 'bar',
         data: {
           labels: estados,
           datasets: [{
             data: valores,
             backgroundColor: colores,
-            borderWidth: 2,
-            borderColor: '#fff'
+            borderWidth: 0,
+            borderRadius: 5,
+            barThickness: 20
           }]
         },
         options: {
+          indexAxis: 'y',
           responsive: true,
           maintainAspectRatio: false,
           plugins: {
-            legend: { position: 'bottom' },
+            legend: { display: false },
             tooltip: {
               callbacks: {
                 label: function (context) {
-                  const label = context.label || '';
                   const value = context.raw || 0;
                   const total = context.dataset.data.reduce((a, b) => a + b, 0);
                   const percent = total > 0 ? Math.round((value / total) * 100) : 0;
-                  return `${label}: ${value} (${percent}%)`;
+                  return ` ${value} (${percent}%)`;
                 }
+              }
+            }
+          },
+          scales: {
+            x: {
+              beginAtZero: true,
+              grid: { display: false },
+              ticks: { display: false }
+            },
+            y: {
+              grid: { display: false },
+              ticks: {
+                font: { weight: 'bold' }
               }
             }
           }

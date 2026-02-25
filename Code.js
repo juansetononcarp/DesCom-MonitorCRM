@@ -178,14 +178,16 @@ function getEstadisticasUsuarioConFiltros(usuarioId, filtros = {}) {
  */
 function getEstadisticasGeneralesConFiltros(filtros = {}) {
   try {
+    // 1. Obtener todos los leads (limpio de filtros anteriores)
     const todosLosLeads = Leads.getLeads();
 
+    // 2. Aplicar únicamente filtros de fecha (Ignorar usuarioId para estadísticas generales)
     let leadsFiltrados = [...todosLosLeads];
 
-    if (filtros.anio) {
+    if (filtros.anio && filtros.anio !== "") {
       leadsFiltrados = Filtros.filtrarPorAnio(leadsFiltrados, filtros.anio);
     }
-    if (filtros.mes) {
+    if (filtros.mes && filtros.mes !== "") {
       leadsFiltrados = Filtros.filtrarPorMes(leadsFiltrados, filtros.mes);
     }
 
@@ -503,7 +505,8 @@ var Leads = (function () {
   function getLeads() {
     try {
       const cache = CacheService.getScriptCache();
-      const cached = cache.get('LEADS_CACHE');
+      const cacheKey = 'LEADS_CACHE_V3'; // Nueva versión de caché para forzar refresco
+      const cached = cache.get(cacheKey);
       if (cached) return JSON.parse(cached);
 
       const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -535,7 +538,7 @@ var Leads = (function () {
         };
       });
 
-      try { cache.put('LEADS_CACHE', JSON.stringify(leads), 300); } catch (e) { }
+      try { cache.put(cacheKey, JSON.stringify(leads), 600); } catch (e) { }
       return leads;
     } catch (error) { throw error; }
   }
